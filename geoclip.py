@@ -13,8 +13,6 @@ from .clip import Clip
 from .multidata import MultiData
 import numpy as np
 
-import collections
-collections.Iterable = collections.abc.Iterable
 
 def contrastive_loss(logits: torch.Tensor) -> torch.Tensor:
     return nn.functional.cross_entropy(logits, torch.arange(len(logits), device=logits.device))
@@ -44,7 +42,7 @@ class GeoClip(pl.LightningModule):
         self.img_encoder = Clip(self.hparams)
         if self.hparams.freeze_clip:
             for params in self.img_encoder.parameters():
-                params.grad_enabled=False
+                params.requires_grad=False
       
         #trainable image encoder to get ground level image CLIP embeddings
         self.imo_encoder = Clip(self.hparams)
@@ -67,7 +65,8 @@ class GeoClip(pl.LightningModule):
     def forward(self, batch):
         img, imo, json = batch
         #get the ground img encodings and detach
-        ground_img_embeddings = self.img_encoder(img).detach().to(self.device)
+        with torch.set_grad_enabled(False):
+            ground_img_embeddings = self.img_encoder(img).detach().to(self.device)
         #get the overhead image embeddings undetached
         overhead_embeddings = self.imo_encoder(imo).to(self.device)
         
@@ -143,7 +142,7 @@ class GeoClip(pl.LightningModule):
         pass
 
     def configure_optimizers(self):
-        self.optim = torch.optim.AdamW(self.imo_encoder.parameters(),
+        self.optim = torch.optim.AdamW(filter(lambda p:p.requires_grad, self.imo_encoder.parameters()),
             lr=self.hparams.learning_rate,
             weight_decay=0.2,
             betas=(0.9,0.98),
@@ -168,7 +167,7 @@ class GeoClip(pl.LightningModule):
 def get_args():
     parser = ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
     #training hparams
-    parser.add_argument('--batch_size',type=int, default=64)
+    parser.add_argument('--batch_size',type=int, default=128)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--normalize_embeddings', type=bool, default=True)
     parser.add_argument('--freeze_clip', type=bool, default=True)
@@ -187,8 +186,16 @@ def get_args():
 
     #logging hparams
     parser.add_argument('--log_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/clip_map/logs')
-    parser.add_argument('--run_name', type=str, default='geoclip_1')
-    parser.add_argument('--ckpt_path', type=str, default=None)
+    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/clip_map/logs/GeoClip/6fatux01/checkpoints/epoch=7-step=5640.ckpt')
+    parser.add_argument('--project_name', type=str, default='GeoClip')
+    parser.add_argument('--run_name', type=str, default='geoclip_2')
+    
+    #trainer hparams
+    parser.add_argument('--max_epochs', type=int, default=10)
+    parser.add_argument('--strategy', type=str, default='ddp_find_unused_parameters_false')
+    parser.add_argument('--accelerator', type=str, default='gpu')
+    parser.add_argument('--devices', type=int, default=1)
+    parser.add_argument('--mode', type=str, default='train')
 
     args = parser.parse_args()
     return args
@@ -213,15 +220,22 @@ def main(args):
     #######################################################################################
     #checkpoints and loggers
     lr_logger = LearningRateMonitor(logging_interval='epoch')
-    wb_logger = WandbLogger(save_dir=args.log_dir,project='GeoClip', name=args.run_name)
+    wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, name=args.run_name)
     ckpt_monitors = (
-            ModelCheckpoint(monitor='loss', mode='max', save_top_k=1),
+            ModelCheckpoint(monitor='loss', mode='min', save_top_k=3),
         )
-    trainer = pl.Trainer(max_epochs=100, logger=wb_logger, strategy='ddp', accelerator='gpu', devices=1, callbacks=[*ckpt_monitors, lr_logger])
-    trainer.fit(geoclip)
+
+    if args.mode == 'dev_run':
+        trainer = pl.Trainer(limit_train_batches=10, max_epochs=4, logger=wb_logger, strategy=args.strategy, 
+        accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger])
+    else:
+        trainer = pl.Trainer(max_epochs=args.max_epochs, logger=wb_logger, strategy=args.strategy, 
+        accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger])
+    
+    trainer.fit(geoclip, ckpt_path=args.ckpt_path)
 
 if __name__ == '__main__':
     args = get_args()
-    code.interact(local=dict(globals(), **locals()))
+   # code.interact(local=dict(globals(), **locals()))
     main(args)
 
