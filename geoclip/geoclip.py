@@ -12,8 +12,9 @@ import code
 from .clip import Clip
 from .multidata import MultiData
 import numpy as np
-from .test import Retrieval
+from .metrics import Retrieval
 import os
+import random
 
 
 def contrastive_loss(logits: torch.Tensor) -> torch.Tensor:
@@ -42,7 +43,7 @@ class GeoClip(pl.LightningModule):
         #self.imo_processor = CLIPImageProcessor.from_pretrained('openai/clip-vit-base-patch32')
 
         #frozen image encoder to get ground level image CLIP embeddings
-        self.img_encoder = Clip(self.hparams)
+        self.img_encoder = Clip(self.hparams,'ground_level')
     
         if self.hparams.freeze_clip:
             self.img_encoder.eval()
@@ -50,7 +51,7 @@ class GeoClip(pl.LightningModule):
                 params.requires_grad=False
       
         #trainable image encoder to get ground level image CLIP embeddings
-        self.imo_encoder = Clip(self.hparams)
+        self.imo_encoder = Clip(self.hparams, 'overhead')
         self.imo_encoder.train()
 
         #instantiate the learnable temperature parameter
@@ -59,19 +60,19 @@ class GeoClip(pl.LightningModule):
         
         #check if a valid data path is provided
         if self.train_path:
-            self.trainset = MultiData(self.train_path).get_ds(mode='train').with_epoch(self.hparams.epoch_length)
+            self.trainset = MultiData(self.hparams).get_ds(mode='train')
         else:
             raise ValueError('Valid path to webdataset file is required')
         
         #test for validation file
         if self.vali_path:
-            self.valiset = MultiData(self.vali_path).get_ds(mode='test')
+            self.valiset = MultiData(self.hparams).get_ds(mode='test')
         else:
             self.valiset = None
 
         #test for test file
         if self.test_path:
-            self.testset = MultiData(self.test_path).get_ds(mode='test')
+            self.testset = MultiData(self.hparams).get_ds(mode='test')
         else:
             self.testset = None
 
@@ -137,7 +138,7 @@ class GeoClip(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         outputs = self.shared_step(batch)
         loss = outputs['loss']
-        self.log('loss', loss, sync_dist=True, batch_size=self.hparams.train_batch_size, prog_bar=True)
+        self.log('loss', loss, sync_dist=True, batch_size=self.hparams.train_batch_size)
         return loss 
     
     #forward pass for each batch in validation
@@ -155,23 +156,31 @@ class GeoClip(pl.LightningModule):
         overhead_img_embeddings = validation_embeddings['normalized_overhead_img_embeddings']
         retrieval = Retrieval(k=self.hparams.top_k)
         retrieval_metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings)
-        self.log(f'top_{self.hparams.top_k}_score', retrieval_metric, sync_dist=True, batch_size=self.hparams.val_batch_size, prog_bar=True)
-        print(f'Retrieval Metric on validation set is {retrieval_metric}') 
+        self.log(f'top_k_score', retrieval_metric, sync_dist=True, batch_size=self.hparams.val_batch_size, prog_bar=True)
+        #print(f'Retrieval Metric on validation set is {retrieval_metric}') 
+        return {'top_k_score':retrieval_metric}
           
     def train_dataloader(self):
-        return wds.WebLoader(self.trainset, batch_size=self.hparams.train_batch_size,
-                    shuffle=False, pin_memory=False)
+
+        trainloader = wds.WebLoader(self.trainset, batch_size=None,
+                    shuffle=False, pin_memory=True, num_workers=self.hparams.num_workers)
+        trainloader = trainloader.unbatched().shuffle(1000).batched(self.hparams.train_batch_size)
+        return trainloader
 
     def val_dataloader(self):
         if self.valiset:
-            return wds.WebLoader(self.valiset, batch_size=self.hparams.val_batch_size,
-                    shuffle=False, pin_memory=False)
+            valloader = wds.WebLoader(self.valiset, batch_size=None, #batch_size=self.hparams.val_batch_size,
+                    shuffle=False, pin_memory=True, num_workers=self.hparams.num_workers)
+            valloader = valloader.unbatched().shuffle(1000).batched(self.hparams.val_batch_size)
+            return valloader
         pass
 
     def test_dataloader(self):
         if self.testset:
-            return wds.WebLoader(self.testset, batch_size=self.hparams.val_batch_size,
-                    shuffle=False, pin_memory=False)
+            testloader = wds.WebLoader(self.testset, batch_size=None, #batch_size=self.hparams.val_batch_size,
+                    shuffle=False, pin_memory=True, num_workers=self.hparams.num_workers)
+            #testloader = testloader.unbatched().shuffle(10000).batched(self.hparams.val_batch_size)
+            return valloader
 
     def configure_optimizers(self):
         self.optim = torch.optim.AdamW(filter(lambda p:p.requires_grad, self.imo_encoder.parameters()),
@@ -180,10 +189,11 @@ class GeoClip(pl.LightningModule):
             betas=(0.9,0.98),
             eps=1e-6
         )
-            
+        
+        self.warm_up_iterations = 3000
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
             optimizer = self.optim,
-            T_0 = 2
+            T_0 = self.warm_up_iterations
         )
         return {'optimizer': self.optim, 'lr_scheduler': self.scheduler}
 
@@ -196,6 +206,27 @@ class GeoClip(pl.LightningModule):
     #     elif reduction == 'mean':
     #         return loss.mean()
 
+def get_shards(data_path='/home/a.dhakal/active/datasets/YFCC100m/webdataset'):
+    all_shards = os.listdir(data_path)
+    test_shards = ['9f248448-1d13-43cb-a336-a7d92bc5359e.tar','206faf6d-e5f4-428e-b27c-4a55746d5629.tar']
+    test_shards = [os.path.join(data_path, shard) for shard in test_shards]
+    all_shards = [os.path.join(data_path,shard) for shard in all_shards]
+    train_shards = [x for x in all_shards if x not in test_shards]
+    return(train_shards, test_shards)
+
+def set_seed(seed: int = 56) -> None:
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    # When running on the CuDNN backend, two further options must be set
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # Set a fixed value for the hash seed
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    print(f"Random seed set as {seed}")
+
+
 def get_args():
     parser = ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
     #training hparams
@@ -207,7 +238,9 @@ def get_args():
     parser.add_argument('--accelerator', type=str, default='gpu')
     parser.add_argument('--devices', type=int, default=1)
     parser.add_argument('--mode', type=str, default='dev')
-    parser.add_argument('--epoch_length', type=int, default=1000)
+    parser.add_argument('--train_epoch_length', type=int, default=10000)
+    parser.add_argument('--val_epoch_length', type=int, default=10)
+    parser.add_argument('--val_check_interval', type=int, default=100)
 
     #wds hparams
     parser.add_argument('--train_batch_size',type=int, default=512)
@@ -216,21 +249,20 @@ def get_args():
     #cilp specific hparams
     parser.add_argument('--temperature', type=float, default=0.07)
     parser.add_argument('--temp_clip', type=int, default=100)
+    parser.add_argument('--vit', type=str, default='14')
 
     #optim params
     parser.add_argument('--learning_rate', type=float, default=5e-5)
 
     #data hparams
-    parser.add_argument('--train_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar')
-    parser.add_argument('--vali_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/206faf6d-e5f4-428e-b27c-4a55746d5629.tar')
-    parser.add_argument('--test_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
+    parser.add_argument('--data_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset')
     parser.add_argument('--input_size', type=int, default=800)
 
     #logging hparams
     parser.add_argument('--log_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs')
     parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/or5comrl/checkpoints/epoch=22-step=16215.ckpt')
     parser.add_argument('--project_name', type=str, default='GeoClip')
-    parser.add_argument('--run_name', type=str, default='geoclip_2')
+    parser.add_argument('--run_name', type=str, default='geoclip_large')
     parser.add_argument('--wandb_mode', type=str, default='online')
     
 
@@ -242,31 +274,31 @@ def get_args():
 
 def main(args):
     #set learning rate logger
-    torch.manual_seed(56)
     print('Starting Training')
     
-    #check for checkpoint
-    ckpt_path = args.ckpt_path
-    geoclip = GeoClip(args).eval()
-    train_ds = geoclip.train_dataloader()
+    #initliaze model
+    geoclip = GeoClip(args)
     
-    #checkpoints and loggers
+    #initialize checkpoints and loggers
     lr_logger = LearningRateMonitor(logging_interval='epoch')
     wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, name=args.run_name, mode=args.wandb_mode)
-    ckpt_monitors = (
-            ModelCheckpoint(monitor='loss', mode='min', save_top_k=3),
-        )
+    ckpt_monitors = ((
+            ModelCheckpoint(monitor='val_loss', filename='{step}-{val_loss:.3f}', mode='min', save_top_k=2, save_last=True),
+                ModelCheckpoint(monitor='top_k_score',filename='{epoch}-{step}-{top_k_score:.3f}', mode='max', save_top_k=2, save_last=True)
+
+        ))
 
     if args.mode == 'dev': 
         print('Development Test Run')
-        trainer = pl.Trainer(fast_dev_run=3, max_epochs=4, logger=wb_logger, strategy=args.strategy, num_sanity_val_steps=5,
+        trainer = pl.Trainer(fast_dev_run=6, max_epochs=4, logger=wb_logger, strategy=args.strategy, num_sanity_val_steps=0,
         accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger])
     elif args.mode == 'train':
         print('Training Run')
-        trainer = pl.Trainer(max_epochs=args.max_epochs, logger=wb_logger, strategy=args.strategy, num_sanity_val_steps=5, 
-        accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger])
+        trainer = pl.Trainer(precision=16, max_epochs=args.max_epochs, logger=wb_logger, strategy=args.strategy, num_sanity_val_steps=0, 
+        accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger], 
+        val_check_interval=args.val_check_interval, check_val_every_n_epoch=None, limit_val_batches=args.val_epoch_length)
     else:
-        raise ValueError('Invalide value for mode')
+        raise ValueError('Invalid value for mode')
     
     if args.ckpt_path.lower()=='none'.lower():
         trainer.fit(geoclip)
@@ -274,7 +306,14 @@ def main(args):
         trainer.fit(geoclip, ckpt_path=args.ckpt_path)
 
 if __name__ == '__main__':
+    set_seed(56)
     args = get_args()
-   # code.interact(local=dict(globals(), **locals()))
+    train_shards, test_shards = get_shards()
+    #set path hyper parameters
+    args.train_path = train_shards #os.path.join(args.data_path, '9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
+    args.vali_path = test_shards
+    args.test_path = None
     main(args)
 
+
+    #code.interact(local=dict(globals(), **locals()))
