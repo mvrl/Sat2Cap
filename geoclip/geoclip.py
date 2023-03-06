@@ -76,6 +76,9 @@ class GeoClip(pl.LightningModule):
         else:
             self.testset = None
 
+        print(f'Ground Level Image encoder training mode:{self.img_encoder.training}')
+        print(f'Overhead Image encoder training model:{self.imo_encoder.training}')
+
     #forward function that runs during inference
     def forward(self, batch):
         img, imo, _,keys = batch
@@ -150,28 +153,32 @@ class GeoClip(pl.LightningModule):
 
     #compute retrieval metrics for a random batch of validation 
     def validation_epoch_end(self, outputs):
-        random_batch = np.random.randint(0,len(outputs))
-        validation_embeddings = outputs[random_batch]
-        ground_img_embeddings = validation_embeddings['normalized_ground_img_embeddings']
-        overhead_img_embeddings = validation_embeddings['normalized_overhead_img_embeddings']
-        retrieval = Retrieval(k=self.hparams.top_k)
-        retrieval_metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings)
-        self.log(f'top_k_score', retrieval_metric, sync_dist=True, batch_size=self.hparams.val_batch_size, prog_bar=True)
-        #print(f'Retrieval Metric on validation set is {retrieval_metric}') 
-        return {'top_k_score':retrieval_metric}
+        if len(outputs)==0:
+            print('Skipping Validatiion Epoch End')
+            pass
+        else:
+            random_batch = np.random.randint(0,len(outputs))
+            validation_embeddings = outputs[random_batch]
+            ground_img_embeddings = validation_embeddings['normalized_ground_img_embeddings']
+            overhead_img_embeddings = validation_embeddings['normalized_overhead_img_embeddings']
+            retrieval = Retrieval(k=self.hparams.top_k)
+            retrieval_metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings)
+            self.log(f'top_k_score', retrieval_metric, sync_dist=True, batch_size=self.hparams.val_batch_size, prog_bar=True)
+            #print(f'Retrieval Metric on validation set is {retrieval_metric}') 
+            return {'top_k_score':retrieval_metric}
           
     def train_dataloader(self):
 
         trainloader = wds.WebLoader(self.trainset, batch_size=None,
                     shuffle=False, pin_memory=True, num_workers=self.hparams.num_workers)
-        trainloader = trainloader.unbatched().shuffle(1000).batched(self.hparams.train_batch_size)
+        trainloader = trainloader.unbatched().shuffle(10000).batched(self.hparams.train_batch_size)
         return trainloader
 
     def val_dataloader(self):
         if self.valiset:
             valloader = wds.WebLoader(self.valiset, batch_size=None, #batch_size=self.hparams.val_batch_size,
                     shuffle=False, pin_memory=True, num_workers=self.hparams.num_workers)
-            valloader = valloader.unbatched().shuffle(1000).batched(self.hparams.val_batch_size)
+            valloader = valloader.unbatched().shuffle(10000).batched(self.hparams.val_batch_size)
             return valloader
         pass
 
@@ -183,6 +190,7 @@ class GeoClip(pl.LightningModule):
             return valloader
 
     def configure_optimizers(self):
+        print(f'Initializing Learning rate {self.hparams.learning_rate}')
         self.optim = torch.optim.AdamW(filter(lambda p:p.requires_grad, self.imo_encoder.parameters()),
             lr=self.hparams.learning_rate,
             weight_decay=0.2,
@@ -190,12 +198,19 @@ class GeoClip(pl.LightningModule):
             eps=1e-6
         )
         
-        self.warm_up_iterations = 3000
+        self.warm_up_iterations = 2000
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
             optimizer = self.optim,
             T_0 = self.warm_up_iterations
         )
-        return {'optimizer': self.optim, 'lr_scheduler': self.scheduler}
+        return {'optimizer': self.optim, 
+        'lr_scheduler': {
+            'name':'trian/lr',
+            'scheduler': self.scheduler,
+            'interval': 'step',
+            'frequency': 1
+        }
+        }
 
    # **************For contrastive learning with soft labels****************************
     # def cross_entropy(self, preds, targets, reduction='none'):
@@ -261,6 +276,7 @@ def get_args():
     #logging hparams
     parser.add_argument('--log_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs')
     parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/or5comrl/checkpoints/epoch=22-step=16215.ckpt')
+    parser.add_argument('--ckpt_mode', type=str, default='hard')
     parser.add_argument('--project_name', type=str, default='GeoClip')
     parser.add_argument('--run_name', type=str, default='geoclip_large')
     parser.add_argument('--wandb_mode', type=str, default='online')
@@ -280,8 +296,8 @@ def main(args):
     geoclip = GeoClip(args)
     
     #initialize checkpoints and loggers
-    lr_logger = LearningRateMonitor(logging_interval='epoch')
-    wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, name=args.run_name, mode=args.wandb_mode)
+    lr_logger = LearningRateMonitor(logging_interval='step')
+    wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, name=args.run_name, mode=args.wandb_mode) # resume='y8yd24yj'
     ckpt_monitors = ((
             ModelCheckpoint(monitor='val_loss', filename='{step}-{val_loss:.3f}', mode='min', save_top_k=2, save_last=True),
                 ModelCheckpoint(monitor='top_k_score',filename='{epoch}-{step}-{top_k_score:.3f}', mode='max', save_top_k=2, save_last=True)
@@ -296,14 +312,26 @@ def main(args):
         print('Training Run')
         trainer = pl.Trainer(precision=16, max_epochs=args.max_epochs, logger=wb_logger, strategy=args.strategy, num_sanity_val_steps=0, 
         accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger], 
-        val_check_interval=args.val_check_interval, check_val_every_n_epoch=None, limit_val_batches=args.val_epoch_length)
+        val_check_interval=args.val_check_interval, check_val_every_n_epoch=None, limit_val_batches=args.val_epoch_length,
+        log_every_n_steps=15)
     else:
         raise ValueError('Invalid value for mode')
     
     if args.ckpt_path.lower()=='none'.lower():
         trainer.fit(geoclip)
     else:
-        trainer.fit(geoclip, ckpt_path=args.ckpt_path)
+        if args.ckpt_mode.lower()=='hard':
+            print('Hard Checkpoint Reload')
+            trainer.fit(geoclip, ckpt_path=args.ckpt_path)
+        elif args.ckpt_mode.lower()=='soft':
+            print('Soft Checkpoint Reload')
+            checkpoint = torch.load(args.ckpt_path)
+            geoclip.load_state_dict(checkpoint['state_dict'])
+            #trainer.global_step=checkpoint['global_step']
+            #trainer.current_epoch=checkpoint['epoch']
+            trainer.fit(geoclip)
+            #code.interact(local=dict(globals(), **locals()))
+
 
 if __name__ == '__main__':
     set_seed(56)

@@ -10,7 +10,7 @@ class Clip(pl.LightningModule):
         super().__init__()
         self.args = args
         self.img_type=img_type
-        self.imo_crop = 320
+        self.imo_crop = 224
         self.vit_map = {'32':'openai/clip-vit-base-patch32', '16':'openai/clip-vit-base-patch16', '14L':'openai/clip-vit-large-patch14'}
         self.vit = self.vit_map[args.vit]
         if self.img_type == 'ground_level':
@@ -19,15 +19,14 @@ class Clip(pl.LightningModule):
             self.vision_model = CLIPVisionModelWithProjection.from_pretrained(self.vit).eval()
         elif self.img_type == 'overhead':
             print(f'Overhead Clip instantiated with {self.vit}')
-            self.config = CLIPVisionConfig.from_pretrained(self.vit)
-            self.config.image_size = self.imo_crop
-            self.image_processor = CLIPImageProcessor(do_resize=True,size=336, do_center_crop=True, crop_size=(self.imo_crop,self.imo_crop), padding=True)
-            self.vision_model = CLIPVisionModelWithProjection.from_pretrained(self.vit, 
-                                config=self.config, ignore_mismatched_sizes=True).train()
-            
+            # self.config = CLIPVisionConfig.from_pretrained(self.vit)
+            # self.config.image_size = self.imo_crop
+            # self.image_processor = CLIPImageProcessor(do_resize=True,size=448, do_center_crop=True, crop_size=(self.imo_crop,self.imo_crop), padding=True)
+            # self.vision_model = CLIPVisionModelWithProjection.from_pretrained(self.vit, 
+            #                     config=self.config, ignore_mismatched_sizes=True).train()
+            self.image_processor = CLIPImageProcessor.from_pretrained(self.vit)
+            self.vision_model = CLIPVisionModelWithProjection.from_pretrained(self.vit).train()
         #print(self.vision_model.config)
-        
-        
 
     def forward(self,x):
         if self.img_type=='ground_level':
