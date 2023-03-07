@@ -12,7 +12,7 @@ import code
 from .clip import Clip
 from .multidata import MultiData
 import numpy as np
-from .metrics import Retrieval
+from .evaluations.metrics import Retrieval
 import os
 import random
 
@@ -187,7 +187,7 @@ class GeoClip(pl.LightningModule):
             testloader = wds.WebLoader(self.testset, batch_size=None, #batch_size=self.hparams.val_batch_size,
                     shuffle=False, pin_memory=True, num_workers=self.hparams.num_workers)
             #testloader = testloader.unbatched().shuffle(10000).batched(self.hparams.val_batch_size)
-            return valloader
+            return testloader
 
     def configure_optimizers(self):
         print(f'Initializing Learning rate {self.hparams.learning_rate}')

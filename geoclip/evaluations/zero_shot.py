@@ -103,8 +103,8 @@ if __name__ == '__main__':
     #params
     set_seed(24)
     dataset_path = '/home/a.dhakal/active/user_a.dhakal/datasets/RESISC45/NWPU-RESISC45'
-    #ckpt_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/y8yd24yj/checkpoints/epoch=0-step=1100-top_k_score=0.736.ckpt' ## vit-32 B
-    ckpt_path = 'baseline'
+    ckpt_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/4sbnqb88/checkpoints/epoch=0-step=3600-top_k_score=0.838.ckpt' ## vit-32 B
+    #ckpt_path = 'baseline'
     batch_size = 256
     #configure dataset
     dataset = ImageFolder(dataset_path, transform=torchvision.transforms.ToTensor())
