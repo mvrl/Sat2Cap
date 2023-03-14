@@ -7,16 +7,18 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import random
 from argparse import ArgumentParser, RawTextHelpFormatter
+import ssl
 #pytorch imports
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl 
 from torchvision.datasets import ImageFolder
 import torchvision
+import torchgeo
 #huggingface import
 from transformers import AutoTokenizer, CLIPTextModelWithProjection
 from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
-
+import rasterio
 
 ##local imports
 from ..geoclip import GeoClip
@@ -26,7 +28,7 @@ class ZeroShot(nn.Module):
         super().__init__()
         self.hparams = hparams
 
-        self.baseline_vit = 'openai/clip-vit-base-patch32'
+        self.baseline_vit = 'openai/clip-vit-base-patch16'
         
         if self.hparams.do_interpolate:
             self.geoclip = self.get_interpolate()
@@ -122,23 +124,30 @@ def set_seed(seed: int = 56) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
     print(f"Random seed set as {seed}")
 
+def tif_to_pil(tif):
+    return rasterio.open(tif)
+
+
 def get_args():
     parser = ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
     
     #hparams
     parser.add_argument('--num_workers', type=int, default=8)
-    parser.add_argument('--dataset_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/datasets/RESISC45/NWPU-RESISC45')
-    parser.add_argument('--batch_size', type=str, default=128)
-    parser.add_argument('--train_size', type=float, default=0.9)
+    #parser.add_argument('--dataset_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/datasets/RESISC45/NWPU-RESISC45')
+    parser.add_argument('--batch_size', type=str, default=64)
+    parser.add_argument('--train_size', type=float, default=0.5)
     parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/st07vzqb/checkpoints/epoch=0-step=2500-top_k_score=0.820.ckpt')
     parser.add_argument('--do_baseline', action='store_true', default=False)
     parser.add_argument('--do_interpolate', action='store_true', default=False)
     parser.add_argument('--geoclip_wt', type=float, default=0.5)
+    parser.add_argument('--dataset_name', type=str, default='resisc')
 
     args = parser.parse_args()
     return args
 
 if __name__ == '__main__':
+    #fixes ssl certificate error
+    ssl._create_default_https_context = ssl._create_unverified_context
     #set tokenizer parallelism to true
     os.environ["TOKENIZERS_PARALLELISM"] = "true"
     #params
@@ -146,12 +155,29 @@ if __name__ == '__main__':
     args = get_args()
     
     #configure dataset
-    dataset = ImageFolder(args.dataset_path, transform=torchvision.transforms.ToTensor())
+    if args.dataset_name.lower()=='resisc':
+        print('Eval on RESISC45 dataset')
+        args.dataset_path = '/home/a.dhakal/active/user_a.dhakal/datasets/RESISC45/NWPU-RESISC45'
+        dataset = ImageFolder(args.dataset_path, transform=torchvision.transforms.ToTensor())
+    elif args.dataset_name.lower()=='eurosat':
+        print('Eval on EuroSat dataset')
+        args.dataset_path = '/home/a.dhakal/active/user_a.dhakal/datasets/eurosat/2750'
+        dataset = ImageFolder(args.dataset_path, transform=torchvision.transforms.ToTensor())
+    elif args.dataset_name.lower()=='ucmer':
+        print('Eval on UCMER dataset')
+        args.dataset_path = '/home/a.dhakal/active/user_a.dhakal/datasets/UCMerced_LandUse/Images'
+        dataset = ImageFolder(args.dataset_path, transform=torchvision.transforms.Compose([
+                    torchvision.transforms.ToTensor(),
+                    torchvision.transforms.Resize((256,256), interpolation=torchvision.transforms.InterpolationMode.BICUBIC)
+                    ]))
+    else:
+        raise ValueError('Invalid Dataset Name')
+    
     total_length = len(dataset)
     train_len = int(args.train_size*total_length)
     test_len = total_length-train_len
-    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_len, test_len])
-    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size = args.batch_size, shuffle=True, num_workers=8,
+    test_dataset, train_dataset = torch.utils.data.random_split(dataset, [train_len, test_len])
+    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size = args.batch_size, shuffle=False, num_workers=8,
                                                     pin_memory=True, persistent_workers=True, drop_last=True)
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size = args.batch_size, shuffle=False, num_workers=8,
                                                     pin_memory=True, persistent_workers=True, drop_last=True)
@@ -164,8 +190,8 @@ if __name__ == '__main__':
     queries = list(prompted_mapping.values())
     args.queries = queries
 
-    evaluation_dir = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/zero_shot_results.txt'
-    alphas = [0,0.1,0.2,0.3]
+    evaluation_dir = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/zero_shot_results_vit_16B.txt'
+    alphas = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
                 
     with open(evaluation_dir, 'a') as f:
         to_write = f'alpha\tmean_accuracy\tLength of Test Set\n'
@@ -180,7 +206,7 @@ if __name__ == '__main__':
         zs_model = zs_model
         with torch.no_grad():
             accs = []
-            for i,batch in tqdm(enumerate(test_dataloader)):
+            for i,batch in tqdm(enumerate(train_dataloader)):
                 x,y = batch
                 pred_dict = zs_model((x,y))
                 pred_dict = pred_dict

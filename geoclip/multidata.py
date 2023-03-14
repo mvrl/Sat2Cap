@@ -21,29 +21,14 @@ class MultiData(object):
             self.dataset = wds.WebDataset(self.args.train_path, resampled=True)
             self.dataset = self.dataset.shuffle(1000).decode('pil').to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json","__key__").map(self.do_transforms).batched(self.args.train_batch_size).with_epoch(self.args.train_epoch_length)
         elif mode=='test':
-            self.dataset = wds.WebDataset(self.args.vali_path, resampled=True)
-            self.dataset = self.dataset.decode('pil').to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json","__key__").map(self.do_transforms).batched(self.args.val_batch_size).with_epoch(self.args.val_epoch_length)
+            self.dataset = wds.WebDataset(self.args.vali_path, resampled=False)
+            self.dataset = self.dataset.decode('pil').to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json","__key__").map(self.do_transforms).batched(self.args.val_batch_size)
         return self.dataset
 
 
     def do_transforms(self, sample):
         img, imo, json, key = sample
-
         img = img.resize((224,224), resample=Image.BICUBIC)
-        # self.transforms_img = transforms.Compose([
-        #     transforms.Resize(size=(224,224), interpolation=transforms.InterpolationMode.BICUBIC)
-        #     transforsm.CenterCrop(size=(224,224)),
-        #     transforms.ToTensor()
-        # ])
-        
-        # self.transforms_imo = transforms.Compose([
-        #     transforms.Resize(size=(800,800), interpolation=transforms.InterpolationMode.BICUBIC)
-        #     transforms.CenterCrop(size=(800,800)),
-        #     transforms.ToTensor()
-        # ])
-
-        # img = self.transforms_img(img)
-        # imo = self.transforms_imo(imo)
         return img, imo, json, key
 
 

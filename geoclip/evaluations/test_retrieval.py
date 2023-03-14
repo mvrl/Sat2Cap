@@ -38,48 +38,64 @@ if __name__ == '__main__':
     args = get_args() 
     device = torch.device(args.device)
     #no gradient context manager for evaluation
-    with torch.set_grad_enabled(False):
-        #load pretrained weights
-            checkpoint = torch.load(args.ckpt_path)
-            hparams = checkpoint['hyper_parameters']
     
-            #set new hyper parameters
-            hparams['val_batch_size'] = args.batch_size
-            hparams['test_path'] = args.test_path               
-            geoclip = GeoClip(hparams=hparams).eval().to(device)
-
-            #set requires grad to false
-            for param in geoclip.parameters():
-                param.requires_grad=False
-            geoclip.load_state_dict(checkpoint['state_dict'])
-
-            #fetch the test dataloader
-            val_dataloader = geoclip.val_dataloader()
-            sample = next(iter(val_dataloader))
-
-            #compute the metric for baseline CLIP
-            baseline_clip = GeoClip(hparams=hparams).eval().to(device)
-            for param in baseline_clip.parameters():
-                param.requires_grad=False
-
-            
-            #get the interpolated model
-            baseline_dict = baseline_clip.state_dict()
-            trained_dict = geoclip.state_dict()
-
-            for key in baseline_dict:
-                trained_dict[key] = (1-args.geoclip_wt)*baseline_dict[key]+args.geoclip_wt*trained_dict[key]
-
-            interpolated_model = GeoClip(hparams=hparams).eval().to(device)
-            interpolated_model.load_state_dict(trained_dict)
-            for param in interpolated_model.parameters():
-                param.requires_grad=False
+    evaluation_dir = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/retrieval_results.txt'
+    alphas = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+    
+    with open(evaluation_dir, 'a') as f:
+        to_write = f'alpha\tTop 5 accuracy\tLength of Test Set\n'
+        f.write(to_write)
+        f.write('_______________________________________________________\n')
+    
+    for alpha in alphas:
+        args.geoclip_wt=alpha
+        print(f'Using alpha {args.geoclip_wt}')
+        with torch.set_grad_enabled(False):
+            #load pretrained weights
+                checkpoint = torch.load(args.ckpt_path)
+                hparams = checkpoint['hyper_parameters']
         
-            geoclip_metric = get_retrieval_metric(geoclip, sample, 5)
-            print(f'The retrieval metric for geoclip is {geoclip_metric}')
-            baseline_metric = get_retrieval_metric(baseline_clip, sample, 5)
-            print(f'The retrieval metric for baseline is {baseline_metric}')
-            interpolated_metric = get_retrieval_metric(interpolated_model, sample, 5)
-            print(f'The retrieval metric for interpolated model is {interpolated_metric}')
+                #set new hyper parameters
+                hparams['val_batch_size'] = args.batch_size
+                hparams['test_path'] = args.test_path               
+                geoclip = GeoClip(hparams=hparams).eval().to(device)
+
+                #set requires grad to false
+                for param in geoclip.parameters():
+                    param.requires_grad=False
+                geoclip.load_state_dict(checkpoint['state_dict'])
+
+                #fetch the test dataloader
+                val_dataloader = geoclip.val_dataloader()
+                sample = next(iter(val_dataloader))
+
+                #compute the metric for baseline CLIP
+                baseline_clip = GeoClip(hparams=hparams).eval().to(device)
+                for param in baseline_clip.parameters():
+                    param.requires_grad=False
+
+                
+                #get the interpolated model
+                baseline_dict = baseline_clip.state_dict()
+                trained_dict = geoclip.state_dict()
+
+                for key in baseline_dict:
+                    trained_dict[key] = (1-args.geoclip_wt)*baseline_dict[key]+args.geoclip_wt*trained_dict[key]
+
+                interpolated_model = GeoClip(hparams=hparams).eval().to(device)
+                interpolated_model.load_state_dict(trained_dict)
+                for param in interpolated_model.parameters():
+                    param.requires_grad=False
             
-# code.interact(local=dict(globals(), **locals()))
+               # geoclip_metric = get_retrieval_metric(geoclip, sample, 5)
+               # print(f'The retrieval metric for geoclip is {geoclip_metric}')
+               # baseline_metric = get_retrieval_metric(baseline_clip, sample, 5)
+               # print(f'The retrieval metric for baseline is {baseline_metric}')
+                interpolated_metric = get_retrieval_metric(interpolated_model, sample, 5)
+                print(f'The retrieval metric for interpolated model is {interpolated_metric}')
+                
+                with open(evaluation_dir, 'a') as f:
+                    to_write = f'{args.geoclip_wt}\t{interpolated_metric}\t{args.batch_size}\n'
+                    f.write(to_write)
+                    f.write('_______________________________________________________\n')
+    # code.interact(local=dict(globals(), **locals()))
