@@ -7,7 +7,10 @@ import webdataset as wds
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser, RawTextHelpFormatter
 from transformers import CLIPImageProcessor, CLIPVisionConfig
+from transformers import AutoTokenizer, CLIPTextModelWithProjection
 import code
+import os
+import sys
 #local imports
 from .clip import Clip
 from .multidata import MultiData
@@ -27,16 +30,108 @@ def clip_loss(similarity: torch.Tensor) -> torch.Tensor:
     return (overhead_img_loss + ground_img_loss) / 2.0
 
 class GeoClip(pl.LightningModule):
+    def get_text_stuff(self):
+        labels = [
+                    'A busy city street lined with skyscrapers',
+                    'A peaceful park with a pond and ducks swimming',
+                    'A quaint small town square with a fountain',
+                    'A bustling outdoor market with vendors selling fruits and vegetables',
+                    'A deserted beach with crashing waves',
+                    'A winding mountain path with beautiful views',
+                    'An ancient temple with intricate carvings',
+                    'A modern art museum with colorful exhibits',
+                    'A charming village with cobblestone streets and thatched roofs',
+                    'A crowded shopping mall with neon lights',
+                    'A serene forest with tall trees and chirping birds',
+                    'A quiet suburban neighborhood with manicured lawns',
+                    'A vast desert with towering sand dunes',
+                    'A lively nightclub with music and dancing',
+                    'A sprawling industrial complex with smokestacks and machinery',
+                    'A picturesque vineyard with rows of grapes',
+                    'A peaceful monastery with chanting monks',
+                    'A high-tech research laboratory with advanced equipment',
+                    'A cozy coffee shop with comfortable seating',
+                    'A historic castle with turrets and a moat',
+                    'A colorful carnival with rides and games',
+                    'A bustling train station with trains arriving and departing',
+                    'A charming countryside with rolling hills and grazing animals',
+                    'A bright and modern hospital with state-of-the-art technology',
+                    'A quaint seaside town with a lighthouse and boardwalk',
+                    'A crowded sports stadium with cheering fans',
+                    'A peaceful cemetery with neatly arranged headstones',
+                    'A busy airport with planes taking off and landing',
+                    'A romantic garden with fragrant flowers',
+                    'A quiet bookstore with shelves filled with books',
+                    'A charming bed and breakfast with cozy rooms',
+                    'A futuristic city with flying cars and towering buildings',
+                    'A deserted ghost town with abandoned buildings',
+                    'A quaint coastal village with fishing boats',
+                    'A busy harbor with cargo ships and cranes',
+                    'A scenic overlook with panoramic views',
+                    'A historic courthouse with columns and a bell tower',
+                    'A bustling convention center with booths and exhibits',
+                    'A quiet cabin in the woods with a cozy fireplace',
+                    'A colorful street market with handmade crafts',
+                    'A peaceful orchard with rows of fruit trees',
+                    'A lively dance club with pulsating music',
+                    'A tranquil botanical garden with exotic plants',
+                    'A busy financial district with tall buildings and banks',
+                    'A quaint bed and breakfast with a garden',
+                    'A modern sports arena with scoreboard and jumbotron',
+                    'A charming ice cream shop with outdoor seating',
+                    'A sprawling ranch with horses and cattle',
+                    'A lively amusement park with roller coasters and attractions',
+                    'A serene lake with swans and paddleboats',
+                    'A bustling bus station with buses arriving and departing',
+                    'A quaint teahouse with traditional tea ceremonies',
+                    'A peaceful mountain cabin with a fireplace and hot tub',
+                    'A busy shipping yard with cranes and cargo containers',
+                    'A charming candy shop with jars of sweets',
+                    'A modern office building with glass walls and elevators',
+                    'A quiet yoga studio with soft music',
+                    'A picturesque waterfall with cascading water',
+                    'A bustling university campus with students and professors',
+                    'A quaint wine bar with local wines',
+                    'A serene river with kayakers and canoes',
+                    'A busy convention center with exhibits and presentations',
+                    'A cozy bistro with outdoor seating',
+                    'A sprawling ranch with acres of crops',
+                    'A charming bakery with delicious pastries',
+                    'A modern data center with racks of servers'
+        ]
+
+        print(f'Using {len(labels)} ChatGPT prompts')
+        #generate prompts from labels
+        ground_prompts = ['a photo of a '+label for label in labels]
+        overhead_prompts = ['an aerial image of a '+label for label in labels]
+        
+        #process the prompts
+        ground_inputs = self.text_tokenizer(ground_prompts, padding=True, return_tensors='pt')
+        overhead_inputs = self.text_tokenizer(overhead_prompts, padding=True, return_tensors='pt')
+
+        #generate the embeddings
+        ground_text_embeddings = self.text_model(**ground_inputs).text_embeds
+        ground_text_embeddings = ground_text_embeddings/ground_text_embeddings.norm(p=2,dim=-1,keepdim=True)
+        
+        overhead_text_embeddings = self.text_model(**overhead_inputs).text_embeds
+        overhead_text_embeddings = overhead_text_embeddings/overhead_text_embeddings.norm(p=2,dim=-1,keepdim=True)
+
+        return (ground_text_embeddings, overhead_text_embeddings)
+
+
     def __init__(self, hparams):
         #save hyperparameters
         super().__init__()
-        self.save_hyperparameters(hparams)
         
+        self.save_hyperparameters(hparams)
+        print(f'Args.vit is {self.hparams.vit}')
         #set path attributes
         self.train_path = self.hparams.train_path
         self.vali_path = self.hparams.vali_path
         self.test_path = self.hparams.test_path
 
+        self.vit_map = {'32':'openai/clip-vit-base-patch32', '16':'openai/clip-vit-base-patch16', '14L':'openai/clip-vit-large-patch14'}
+        
         #this is deprecated in favor of self.save_hyperparameters(hparams)
         #self.hparams = hparams
         #todo:modify the img_processor config file for the large overhead images
@@ -57,7 +152,14 @@ class GeoClip(pl.LightningModule):
         #instantiate the learnable temperature parameter
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1/self.hparams.temperature))
         self.temp_clip = self.hparams.temp_clip
+
+        #initialize the text model
+        self.text_tokenizer = AutoTokenizer.from_pretrained(self.vit_map[self.hparams.vit])
+        self.text_model = CLIPTextModelWithProjection.from_pretrained(self.vit_map[self.hparams.vit])
+        for params in self.text_model.parameters():
+            params.requires_grad=False
         
+        self.ground_text_embeddings, self.overhead_text_embeddings = self.get_text_stuff() #Both are 21x512
         #check if a valid data path is provided
         if self.train_path:
             self.trainset = MultiData(self.hparams).get_ds(mode='train')
@@ -111,9 +213,18 @@ class GeoClip(pl.LightningModule):
         logits_per_ground_img = logits_per_overhead_img.t() 
 
         #compute cross_entropy loss between the cross-modal similarities and hard gt
-        loss = clip_loss(logits_per_overhead_img)
+        cross_contrastive_loss = clip_loss(logits_per_overhead_img)
 
-        return{'loss':loss, 
+        #compute the cross entropy loss between for the text prompt to image similarity between the two modalities
+        text_to_ground_sim = torch.matmul(normalized_ground_img_embeddings,self.ground_text_embeddings.t().to('cuda')) # Nx21
+        text_to_overhead_sim = torch.matmul(normalized_overhead_img_embeddings, self.overhead_text_embeddings.t().to('cuda')) # Nx21
+
+        prompt_similarity_loss = nn.functional.cross_entropy(input=text_to_overhead_sim, target=text_to_ground_sim)
+
+        loss = 0.7*cross_contrastive_loss + 0.3*prompt_similarity_loss
+        return{'loss':loss,
+                'contrastive_loss':cross_contrastive_loss,
+                'prompt_similarity_loss':prompt_similarity_loss, 
                 'logits_per_overhead_img': logits_per_overhead_img,
                 'normalized_ground_img_embeddings':normalized_ground_img_embeddings,
                 'normalized_overhead_img_embeddings':normalized_overhead_img_embeddings
@@ -141,14 +252,22 @@ class GeoClip(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         outputs = self.shared_step(batch)
         loss = outputs['loss']
+        train_contrastive_loss = outputs['contrastive_loss']
+        prompt_similarity_loss = outputs['prompt_similarity_loss']
         self.log('loss', loss, sync_dist=True, batch_size=self.hparams.train_batch_size)
+        self.log('contrastive_loss', train_contrastive_loss, prog_bar=True, sync_dist=True, batch_size=self.hparams.train_batch_size)
+        self.log('prompt_loss', prompt_similarity_loss, prog_bar=True, sync_dist=True, batch_size=self.hparams.train_batch_size)
         return loss 
     
     #forward pass for each batch in validation
     def validation_step(self, batch, batch_idx):
         outputs = self.shared_step(batch)
         val_loss = outputs['loss']
+        val_contrastive_loss = outputs['contrastive_loss']
+        val_prompt_similarity_loss = outputs['prompt_similarity_loss']
         self.log('val_loss', val_loss, sync_dist=True, batch_size=self.hparams.val_batch_size, prog_bar=True)
+        self.log('val_contrastive_loss', val_contrastive_loss, prog_bar=True, sync_dist=True, batch_size=self.hparams.train_batch_size)
+        self.log('val_prompt_loss', val_prompt_similarity_loss, sync_dist=True, batch_size=self.hparams.train_batch_size)
         return {'val_loss':outputs['loss'],'normalized_ground_img_embeddings':outputs['normalized_ground_img_embeddings'], 'normalized_overhead_img_embeddings':outputs['normalized_overhead_img_embeddings']}
 
     #compute retrieval metrics for a random batch of validation 
@@ -198,7 +317,7 @@ class GeoClip(pl.LightningModule):
             eps=1e-6
         )
         
-        self.warm_up_iterations = 2000
+        self.warm_up_iterations = 3000
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
             optimizer = self.optim,
             T_0 = self.warm_up_iterations
@@ -264,7 +383,7 @@ def get_args():
     #cilp specific hparams
     parser.add_argument('--temperature', type=float, default=0.07)
     parser.add_argument('--temp_clip', type=int, default=100)
-    parser.add_argument('--vit', type=str, default='14')
+    parser.add_argument('--vit', type=str, default='32')
 
     #optim params
     parser.add_argument('--learning_rate', type=float, default=5e-5)
@@ -280,6 +399,7 @@ def get_args():
     parser.add_argument('--project_name', type=str, default='GeoClip')
     parser.add_argument('--run_name', type=str, default='geoclip_large')
     parser.add_argument('--wandb_mode', type=str, default='online')
+    parser.add_argument('--wandb_resume', type=str, default='false')
     
 
     #metrics hparams
@@ -297,7 +417,9 @@ def main(args):
     
     #initialize checkpoints and loggers
     lr_logger = LearningRateMonitor(logging_interval='step')
-    wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, name=args.run_name, mode=args.wandb_mode) # resume='y8yd24yj'
+    if args.wandb_resume.lower()=='none':
+        args.resume = None
+    wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, name=args.run_name, mode=args.wandb_mode, resume=args.wandb_resume) 
     ckpt_monitors = ((
             ModelCheckpoint(monitor='val_loss', filename='{step}-{val_loss:.3f}', mode='min', save_top_k=2, save_last=True),
                 ModelCheckpoint(monitor='top_k_score',filename='{epoch}-{step}-{top_k_score:.3f}', mode='max', save_top_k=2, save_last=True)
@@ -335,12 +457,16 @@ def main(args):
 
 if __name__ == '__main__':
     set_seed(56)
+    os.environ['TOKENIZERS_PARALLELISM']='true'
     args = get_args()
+    print(f'In main Args.vit is {args.vit}')
+    print(f'In main Args.lr is {args.ckpt_path}')
     train_shards, test_shards = get_shards()
     #set path hyper parameters
     args.train_path = train_shards #os.path.join(args.data_path, '9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
     args.vali_path = test_shards
     args.test_path = None
+    #code.interact(local=dict(globals(), **locals()))
     main(args)
 
 

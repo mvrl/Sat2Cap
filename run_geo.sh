@@ -1,24 +1,24 @@
 #!/bin/bash
 python -m geoclip.geoclip --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
-    --train_batch_size=512 \
-    --val_batch_size=512 \
+    --train_batch_size=150 \
+    --val_batch_size=150 \
     --wandb_mode=online \
-    --ckpt_path=none \
+    --wandb_resume=false \
     --max_epochs=100 \
     --accelerator=gpu \
     --devices=1 \
-    --num_workers=5 \
+    --num_workers=3 \
     --project_name=GeoClip \
     --mode=train \
     --train_epoch_length=2000 \
     --val_epoch_length=25 \
     --val_check_interval=100 \
     --project_name=GeoClip \
-    --run_name=geoclip_13_224size_fixlr \
-    --vit='32' \
-    --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/y8yd24yj/checkpoints/epoch=0-step=1100-top_k_score=0.736.ckpt' \
-    --ckpt_mode='soft' \
-    --learning_rate=0.00004
+    --run_name=geoclip_16_w_chatgpt \
+    --vit='16' \
+    --ckpt_path='none' \
+    --ckpt_mode='none' \
+    --learning_rate=0.00005
 
     #/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/6zbm4f59/checkpoints/step=4500-top_k_score=0.875.ckpt
     # --val_check_interval=5 \
