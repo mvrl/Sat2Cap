@@ -17,10 +17,11 @@ from ..multidata import MultiData
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/st07vzqb/checkpoints/epoch=0-step=2500-top_k_score=0.820.ckpt')
+    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/base_model/CLIP_32B.pt')
     parser.add_argument('--batch_size', type=int, default=500)
-    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/geoclip_embeddings')
-    parser.add_argument('--test_dir', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/*.tar')
+    parser.add_argument('--geoclip_embed_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/geoclip_embeddings/*.h5')
+    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/clip_embeddings')
+    parser.add_argument('--test_dir', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/')
     parser.add_argument('--embedding_size', type=int, default=512)
     parser.add_argument('--max_size', default=None)
 
@@ -36,18 +37,33 @@ if __name__ == '__main__':
     batch_size=args.batch_size
     output_dir=args.output_dir
 
-    #find path of embeddings that already exist
-    existing_paths = glob.glob(f'{output_dir}/*.h5')
-    existing_files = [path.split('/')[-1].split('.')[0] for path in existing_paths]
+    # #find path of embeddings that already exist
+    # existing_paths = glob.glob(f'{output_dir}/*.h5')
+    # existing_files = [path.split('/')[-1].split('.')[0] for path in existing_paths]
     
-    #find path to all input shards
-    test_dir=args.test_dir
-    test_paths = glob.glob(test_dir)
+    # #find path to all input shards
+    # test_dir=args.test_dir
+    # test_paths = glob.glob(test_dir)
     
-    #remove paths which have already been traversed over
-    print(f'Total Input Paths: {len(test_paths)}')
-    [test_paths.remove(path) if path.split('/')[-1].split('.')[0] in existing_files else 1 for path in test_paths]
-    print(f'Remaining Input Paths: {len(test_paths)}')
+    # #remove paths which have already been traversed over
+    # print(f'Total Input Paths: {len(test_paths)}')
+    # [test_paths.remove(path) if path.split('/')[-1].split('.')[0] in existing_files else 1 for path in test_paths]
+    # print(f'Remaining Input Paths: {len(test_paths)}')
+
+    # #only select paths that are predicted by geoclip
+    # existing_geoclip_paths = glob.glob(args.geoclip_embed_dir)
+    # existing_geoclip_files = [path.split('/')[-1].split('.')[0] for path in existing_geoclip_paths]
+    # print(f'Number of GeoClip embeddings {len(existing_geoclip_files)}')
+    # print('Selecting paths that existing in GeoClip dir')
+    # a = [True if path.split('/')[-1].split('.')[0] in existing_geoclip_files else test_paths.remove(path) for path in test_paths]
+    # print(f'Remaining Input Paths: {len(test_paths)}')
+    
+    existing_geoclip_paths = glob.glob(args.geoclip_embed_dir)
+    existing_geoclip_files = [path.split('/')[-1].split('.')[0] for path in existing_geoclip_paths]
+    test_paths = [f'{args.test_dir}/{file}.tar' for file in existing_geoclip_files]
+    print(f'Number of test path:{len(test_paths)}')
+ 
+
     embedding_size=args.embedding_size
     max_size = args.max_size
     device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
