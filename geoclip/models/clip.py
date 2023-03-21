@@ -35,10 +35,9 @@ class Clip(pl.LightningModule):
             processed_image = self.image_processor(x, return_tensors='pt', padding=True, do_resize=True, do_normalize=True, image_mean=self.imo_mean, image_std=self.imo_std).to(self.args.device)
             #print(self.processed_image.pixel_values.shape)
         batch_tensors = self.vision_model(**processed_image)
-        batch_embeddings = batch_tensors.image_embeds
-        if self.args.normalize_embeddings:
-            batch_embeddings = batch_embeddings/batch_embeddings.norm(p=2,dim=-1, keepdim=True)
-        return batch_embeddings
+        unnormalized_batch_embeddings = batch_tensors.image_embeds
+        normalized_batch_embeddings = unnormalized_batch_embeddings/unnormalized_batch_embeddings.norm(p=2,dim=-1, keepdim=True)
+        return normalized_batch_embeddings, unnormalized_batch_embeddings
 
 if __name__ == '__main__':
 

@@ -48,8 +48,7 @@ class GeoMoCo(pl.LightningModule):
         
         #instantiate the learnable temperature parameter and queue size
         self.K = self.hparams.queue_size
-        self.logit_scale = nn.Parameter(torch.tensor([np.log(1/self.hparams.temperature)]))
-        self.temp_clip = self.hparams.temp_clip
+        self.logit_scale = nn.Parameter(torch.tensor([np.log(1/self.hparams.temperature)]))       
         
         #initialize queue
         self.register_buffer('queue', torch.randn(self.hparams.dim_size,self.K))
@@ -96,21 +95,25 @@ class GeoMoCo(pl.LightningModule):
         pass
 
     #clamp the temperature parameter
-    def on_train_batch_start(self,batch, batch_idx):
-        self.logit_scale.data = torch.clamp(self.logit_scale.data, 0, 4.6052)
+    def on_train_batch_end(self,outputs,batch, batch_idx):
+        if self.logit_scale.data > np.log(100):
+            self.logit_scale.data = torch.clamp(self.logit_scale.data, 0, np.log(100))
 
     #forward function that runs during inference
     def forward(self, batch):
         img, imo, _,keys = batch
         #get the ground img encodings and detach
         with torch.set_grad_enabled(False): #equivalent to torch.no_grad()
-            ground_img_embeddings = self.img_encoder(img).to(self.device)   #keys: NxC
+            ground_img_embeddings, unnormalized_ground_img_embeddings = self.img_encoder(img).to(self.device)
         #get the overhead image embeddings undetached
-        overhead_embeddings = self.imo_encoder(imo).to(self.device) #queries: NxC
+        overhead_img_embeddings, unnormalized_overhead_img_embeddings = self.imo_encoder(imo).to(self.device)
+        code.interact(local=dict(globals(), **locals()))
 
         return{'ground_img_embeddings':ground_img_embeddings, 
-            'overhead_img_embeddings':overhead_embeddings,
-      #      'keys':keys
+            'overhead_img_embeddings':overhead_img_embeddings,
+            'unnormalized_ground_img_embeddings': unnormalized_ground_img_embeddings,
+            'unnormalized_overhead_img_embeddings': unnormalized_overhead_img_embeddings,
+            'keys':keys
         }
     
     #shred step for test and validation that returns embeddings and clip loss
@@ -131,6 +134,10 @@ class GeoMoCo(pl.LightningModule):
 
         #Compute temperature
         logit_scale = self.logit_scale.exp()
+        # if logit_scale > 100:
+        #     self.logit_scale = nn.Parameter(torch.tensor([np.log(100)]))
+        #     logit_scale = self.logit_scale.exp()
+
         #Apply temperature
         logits_per_overhead_img = logits*logit_scale # Nx(1+K) Overhead images in batch x Ground images in Queue+1
 
@@ -138,7 +145,7 @@ class GeoMoCo(pl.LightningModule):
         labels = torch.zeros(logits.shape[0], dtype=torch.long).to('cuda')
 
         #compute cross_entropy loss between the cross-modal similarities and hard gt
-        cross_contrastive_loss = contrastive_loss(logits, labels)
+        cross_contrastive_loss = contrastive_loss(logits_per_overhead_img, labels)
 
         # dequeue and enqueue
         self._dequeue_and_enqueue(normalized_ground_img_embeddings)
@@ -166,7 +173,8 @@ class GeoMoCo(pl.LightningModule):
                     'prompt_similarity_loss': torch.tensor(0, dtype=torch.float32),
                     'logits_per_overhead_img': logits_per_overhead_img,
                     'normalized_ground_img_embeddings':normalized_ground_img_embeddings,
-                    'normalized_overhead_img_embeddings':normalized_overhead_img_embeddings
+                    'normalized_overhead_img_embeddings':normalized_overhead_img_embeddings,
+                    'logit_scale':logit_scale
             }
     
     #forward pass for each batch in training 
@@ -178,6 +186,7 @@ class GeoMoCo(pl.LightningModule):
         self.log('loss', loss, sync_dist=True, batch_size=self.hparams.train_batch_size)
         self.log('contrastive_loss', train_contrastive_loss, prog_bar=True, sync_dist=True, batch_size=self.hparams.train_batch_size)
         self.log('prompt_loss', prompt_similarity_loss, prog_bar=True, sync_dist=True, batch_size=self.hparams.train_batch_size)
+        self.log('logit_scale', outputs['logit_scale'], prog_bar=True, batch_size=self.hparams.train_batch_size)
         return loss 
     
     #forward pass for each batch in validation
@@ -261,7 +270,7 @@ class GeoMoCo(pl.LightningModule):
             img, _, _,_ = batch
             #get the ground img encodings and detach
             with torch.set_grad_enabled(False): #equivalent to torch.no_grad()
-                normalized_ground_img_embeddings = self.img_encoder(img)   #keys: NxC
+                normalized_ground_img_embeddings,_ = self.img_encoder(img)   #keys: NxC
                 self._dequeue_and_enqueue(normalized_ground_img_embeddings)
             if i==num_steps_to_fill:
                 break

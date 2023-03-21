@@ -75,17 +75,24 @@ class GeoClip(pl.LightningModule):
         print(f'Ground Level Image encoder training mode:{self.img_encoder.training}')
         print(f'Overhead Image encoder training model:{self.imo_encoder.training}')
 
+    #clamp the temperature parameter
+    def on_train_batch_end(self,outputs,batch, batch_idx):
+        if self.logit_scale.data > np.log(100):
+            self.logit_scale.data = torch.clamp(self.logit_scale.data, 0, np.log(100))
+
     #forward function that runs during inference
     def forward(self, batch):
         img, imo, _,keys = batch
         #get the ground img encodings and detach
         with torch.set_grad_enabled(False): #equivalent to torch.no_grad()
-            ground_img_embeddings = self.img_encoder(img).to(self.device)
+            ground_img_embeddings, unnormalized_ground_img_embeddings = self.img_encoder(img).to(self.device)
         #get the overhead image embeddings undetached
-        overhead_embeddings = self.imo_encoder(imo).to(self.device)
-        
+        overhead_img_embeddings, unnormalized_overhead_img_embeddings = self.imo_encoder(imo).to(self.device)
+        code.interact(local=dict(globals(), **locals()))
         return{'ground_img_embeddings':ground_img_embeddings, 
-            'overhead_img_embeddings':overhead_embeddings,
+            'overhead_img_embeddings':overhead_img_embeddings,
+            'unnormalized_ground_img_embeddings': unnormalized_ground_img_embeddings,
+            'unnormalized_overhead_img_embeddings': unnormalized_overhead_img_embeddings,
             'keys':keys
         }
     
@@ -98,10 +105,6 @@ class GeoClip(pl.LightningModule):
         
         #Calculate loss
         logit_scale = self.logit_scale.exp()
-        #clip scale value if greater than 100
-        if logit_scale > 100:
-            logit_scale = 100
-            self.logit_scale = torch.log(self.temp_clip)
         #similarity between the ground level and overhead imagery
         logits_per_overhead_img = torch.matmul(normalized_overhead_img_embeddings,normalized_ground_img_embeddings.t())*logit_scale
         logits_per_ground_img = logits_per_overhead_img.t() 
@@ -162,6 +165,7 @@ class GeoClip(pl.LightningModule):
         self.log('loss', loss, sync_dist=True, batch_size=self.hparams.train_batch_size)
         self.log('contrastive_loss', train_contrastive_loss, prog_bar=True, sync_dist=True, batch_size=self.hparams.train_batch_size)
         self.log('prompt_loss', prompt_similarity_loss, prog_bar=True, sync_dist=True, batch_size=self.hparams.train_batch_size)
+        self.log('temp_scale', self.logit_scale.data, prog_bar=True, batch_size=self.hparams.train_batch_size)
         return loss 
     
     #forward pass for each batch in validation
