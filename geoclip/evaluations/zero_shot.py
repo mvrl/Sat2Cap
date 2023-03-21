@@ -21,20 +21,21 @@ from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 import rasterio
 
 ##local imports
-from ..geoclip import GeoClip
+from ..models. geoclip import GeoClip
 
 class ZeroShot(nn.Module):
     def __init__(self,hparams):
         super().__init__()
         self.hparams = hparams
 
-        self.baseline_vit = 'openai/clip-vit-base-patch16'
+        self.vit_map = {'32':'openai/clip-vit-base-patch32', '16':'openai/clip-vit-base-patch16', '14L':'openai/clip-vit-large-patch14'}
+        self.baseline_vit = self.vit_map[self.hparams.baseline_vit]
         
         if self.hparams.do_interpolate:
             self.geoclip = self.get_interpolate()
         else:
             self.geoclip = self.get_geoclip()
-        self.query_embeddings = self.get_query_embeddings()
+        self.query_embeddings = self.get_query_embeddings().to('cuda')
     
     def forward(self, batch):
         x,y = batch
@@ -62,6 +63,7 @@ class ZeroShot(nn.Module):
         #load geoclip model from checkpoint
         pretrained_ckpt = torch.load(self.hparams.ckpt_path)
         pretrained_hparams = pretrained_ckpt['hyper_parameters']
+        pretrained_hparams['prompt_loss']=None
         model = GeoClip(pretrained_hparams)
         if self.hparams.do_baseline:
             geoclip = model.imo_encoder.eval()
@@ -77,14 +79,16 @@ class ZeroShot(nn.Module):
         return geoclip 
 
     def get_interpolate(self):
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print('Running Interpolated Model')
         pretrained_ckpt = torch.load(self.hparams.ckpt_path)
         pretrained_hparams = pretrained_ckpt['hyper_parameters']
         pretrained_weights = pretrained_ckpt['state_dict']
-        
+        pretrained_hparams['prompt_loss']=None
         model_baseline = GeoClip(pretrained_hparams)
         model_trained = GeoClip(pretrained_hparams)
-        model_trained.load_state_dict(pretrained_weights)
+        missing_keys, unexpected_keys = model_trained.load_state_dict(pretrained_weights, strict=False)
+        print(f'Missing Keys: {missing_keys}\nUnexpected_keys: {unexpected_keys}')
         
         baseline_geoclip = model_baseline.imo_encoder.eval()
         trained_geoclip = model_trained.imo_encoder.eval()
@@ -108,6 +112,7 @@ class ZeroShot(nn.Module):
             params.requires_grad=False
         
         interpolated_geoclip.load_state_dict(trained_dict)
+        interpolated_geoclip = interpolated_geoclip.to(device)
         
         return interpolated_geoclip
 
@@ -140,6 +145,7 @@ def get_args():
     parser.add_argument('--do_baseline', action='store_true', default=False)
     parser.add_argument('--do_interpolate', action='store_true', default=False)
     parser.add_argument('--geoclip_wt', type=float, default=0.5)
+    parser.add_argument('--baseline_vit', type=str, default='32')
     parser.add_argument('--dataset_name', type=str, default='resisc')
 
     args = parser.parse_args()
@@ -190,9 +196,9 @@ if __name__ == '__main__':
     queries = list(prompted_mapping.values())
     args.queries = queries
 
-    evaluation_dir = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/zero_shot_results_vit_16B.txt'
-    alphas = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-                
+    evaluation_dir = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/zero_shot_results.txt'
+    #alphas = [i/10 for i in range(0,11)]
+    alphas=[1]           
     with open(evaluation_dir, 'a') as f:
         to_write = f'alpha\tmean_accuracy\tLength of Test Set\n'
         f.write(to_write)
@@ -210,8 +216,8 @@ if __name__ == '__main__':
                 x,y = batch
                 pred_dict = zs_model((x,y))
                 pred_dict = pred_dict
-                preds = pred_dict['pred']
-                gt = pred_dict['gt']
+                preds = pred_dict['pred'].to('cpu')
+                gt = pred_dict['gt'].to('cpu')
                 pred_mask = preds==gt
                 acc = pred_mask.sum()/len(pred_mask) 
                 accs.append(acc.numpy())
