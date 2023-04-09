@@ -9,7 +9,9 @@ from typing import Tuple, List, Union, Optional
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, AdamW, get_linear_schedule_with_warmup
 from tqdm import tqdm, trange
 import skimage.io as io
-import PIL.Image
+import code
+import PIL
+from ..models.geoclip import GeoClip
 
 
 
@@ -220,49 +222,67 @@ def generate2(
 
     return generated_list[0]
 
-pretrained_model = 'Conceptual captions'  # @param ['COCO', 'Conceptual captions']
+if __name__ == '__main__':
+    image_model = 'geoclip'
+    ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt'
+    img_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/images/overhead_images/imo_lat_49.709016_long_0.20241_16.jpg'
 
-if pretrained_model == 'Conceptual captions':
-  model_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/geoclip/data/clipcap'
+    pretrained_model = 'Conceptual captions'  # @param ['COCO', 'Conceptual captions']
+    #clip cap model path
+    model_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/pretrained_models/clipcap/conceptual_weights.pt'
 
-is_gpu = True
+    is_gpu = True
 
-device = CUDA(0) if is_gpu else "cpu"
-clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-prefix_length = 10
+    device = CUDA(0) if is_gpu else "cpu"
+    
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    prefix_length = 10
 
-model = ClipCaptionModel(prefix_length)
+    model = ClipCaptionModel(prefix_length)
 
-model.load_state_dict(torch.load(model_path, map_location=CPU)) 
+    model.load_state_dict(torch.load(model_path, map_location=CPU)) 
 
-model = model.eval() 
-device = CUDA(0) if is_gpu else "cpu"
-model = model.to(device)
+    model = model.eval() 
+    device = CUDA(0) if is_gpu else "cpu"
+    model = model.to(device)
 
-#Inference 
-#@title Inference
-use_beam_search = False #@param {type:"boolean"}  
+    #Inference 
+    #@title Inference
+    use_beam_search = True #@param {type:"boolean"}  
 
-# image = io.imread(UPLOADED_FILE)
-# pil_image = PIL.Image.fromarray(image)
-#pil_img = Image(filename=UPLOADED_FILE)
-pil_image = PIL.Image.open('/home/a.dhakal/active/user_a.dhakal/datasets/RESISC45/NWPU-RESISC45/airplane/airplane_002.jpg')
-display(pil_image)
-
-image = preprocess(pil_image).unsqueeze(0).to(device)
-with torch.no_grad():
-    # if type(model) is ClipCaptionE2E:
-    #     prefix_embed = model.forward_image(image)
-    # else:
-    prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
-    #prefix = prefix/prefix.norm(p=2,dim=-1)
-    prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
-if use_beam_search:
-    generated_text_prefix = generate_beam(model, tokenizer, embed=prefix_embed)[0]
-else:
-    generated_text_prefix = generate2(model, tokenizer, embed=prefix_embed)
-
-
-print('\n')
-print(generated_text_prefix)
+    # image = io.imread(UPLOADED_FILE)
+    # pil_image = PIL.Image.fromarray(image)
+    #pil_img = Image(filename=UPLOADED_FILE)
+    pil_image = PIL.Image.open(img_path)
+    #code.interact(local=dict(globals(), **locals()))
+    
+    with torch.no_grad():
+        # if type(model) is ClipCaptionE2E:
+        #     prefix_embed = model.forward_image(image)
+        # else:
+        if image_model == 'clip':
+            print('Using Regular CLIP')
+            clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
+            image = preprocess(pil_image).unsqueeze(0).to(device)
+            prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
+            norm_prefix = prefix/prefix.norm(p=2,dim=-1)
+            prefixes = [prefix, norm_prefix]
+        elif image_model == 'geoclip':
+            print('Using GeoClip')
+            checkpoint = torch.load(ckpt_path)
+            hparams = checkpoint['hyper_parameters']
+            geoclip_model = GeoClip(hparams=hparams).eval().to(device)
+            unused_params = geoclip_model.load_state_dict(checkpoint['state_dict'], strict=False)
+            print(f'Couldn\'t load {unused_params}')
+            imo_encoder = geoclip_model.imo_encoder
+            prefixes = [embeddings.to(device) for embeddings in imo_encoder(pil_image)]
+        
+        prefix_embeds = [model.clip_project(prefix).reshape(1, prefix_length, -1) for prefix in prefixes]
+        
+    if use_beam_search:
+        generated_text_prefix = [generate_beam(model, tokenizer, embed=prefix_embed)[0] for prefix_embed in prefix_embeds]
+    else:
+        generated_text_prefix = [generate2(model, tokenizer, embed=prefix_embed) for prefix_embed in prefix_embeds]
+    
+    print(f'\nUnnormalized: {generated_text_prefix[0]}')
+    print(f'\nNormalized: {generated_text_prefix[1]}')
