@@ -65,7 +65,18 @@ if __name__ == '__main__':
     img, imo, json, key = sample
     ov1 = imo[0]
     gr1 = img[0]
-    code.interact(local=dict(globals(), **locals()))
+    #code.interact(local=dict(globals(), **locals()))
+
+    r = np.random.randint(0,40)
+
+    for i, data in enumerate(dataset):
+        img, imo, json, key = sample
+        n = len(imo)
+        for im,js in zip(imo,json):
+            curr_lat = js['latitude']
+            curr_long = js['longitude']
+            im.save(f'/home/a.dhakal/active/user_a.dhakal/geoclip/images/overhead_images/imo_lat_{curr_lat}_long_{curr_long}_{r}.jpg')
+            
     # clip_overhead = Clip(args,'overhead')
     # clip_ground = Clip(args,'ground_level')
 
