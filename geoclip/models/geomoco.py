@@ -104,10 +104,14 @@ class GeoMoCo(pl.LightningModule):
         img, imo, _,keys = batch
         #get the ground img encodings and detach
         with torch.set_grad_enabled(False): #equivalent to torch.no_grad()
-            ground_img_embeddings, unnormalized_ground_img_embeddings = self.img_encoder(img).to(self.device)
+            ground_img_embeddings, unnormalized_ground_img_embeddings = self.img_encoder(img)
+            ground_img_embeddings = ground_img_embeddings.to(self.device)
+            unnormalized_ground_img_embeddings = unnormalized_ground_img_embeddings.to(self.device)
         #get the overhead image embeddings undetached
-        overhead_img_embeddings, unnormalized_overhead_img_embeddings = self.imo_encoder(imo).to(self.device)
-        code.interact(local=dict(globals(), **locals()))
+        overhead_img_embeddings, unnormalized_overhead_img_embeddings = self.imo_encoder(imo)
+        overhead_img_embeddings = ground_img_embeddings.to(self.device)
+        unnormalized_overhead_img_embeddings = unnormalized_ground_img_embeddings.to(self.device)
+
 
         return{'ground_img_embeddings':ground_img_embeddings, 
             'overhead_img_embeddings':overhead_img_embeddings,
