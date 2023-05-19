@@ -1,5 +1,4 @@
 .images/
 .logs/
-
-.images/
+.pretrained_models/
 .ris_logs/
