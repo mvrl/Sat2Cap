@@ -90,6 +90,9 @@ def get_args():
     parser.add_argument('--queue_size', type=int, default=2560)
     parser.add_argument('--dim_size', type=int, default=512)
 
+    #geoencodings
+    parser.add_argument('--geo_encode', action='store_true', default=False)
+
     #metrics hparams
     parser.add_argument('--top_k', type=int, default=5)
 
@@ -123,7 +126,7 @@ def main(args):
         accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger])
     elif args.mode == 'train':
         print('Training Run')
-        trainer = pl.Trainer(precision=16, max_epochs=args.max_epochs, logger=wb_logger, strategy=args.strategy, num_sanity_val_steps=0, 
+        trainer = pl.Trainer(precision='32', max_epochs=args.max_epochs, logger=wb_logger, strategy=args.strategy, num_sanity_val_steps=0, 
         accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger], 
         val_check_interval=args.val_check_interval, check_val_every_n_epoch=None, limit_val_batches=args.val_epoch_length,
         log_every_n_steps=15)

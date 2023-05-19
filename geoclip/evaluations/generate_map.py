@@ -17,7 +17,8 @@ def generate_map(input_path, output_path):
 
     # Plot points
     x, y = map(data['long'].values, data['lat'].values)
-    map.scatter(x, y, c=data[['red', 'green', 'blue']].values)
+    #map.scatter(x, y, c=data[['red','green','blue']].values)
+    map.scatter(x, y)
 
     # Add latitude and longitude ticks
     map.drawparallels(range(-90, 90, 10), labels=[1, 0, 0, 0])
@@ -30,5 +31,5 @@ def generate_map(input_path, output_path):
 if __name__ == '__main__':
     print('In')
     input_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/pca_visualizations/pca_results.csv'
-    output_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/pca_visualizations/pca_w_map'
+    output_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/pca_visualizations/data.jpeg'
     generate_map(input_path, output_path)

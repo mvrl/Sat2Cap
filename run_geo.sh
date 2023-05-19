@@ -2,30 +2,35 @@
 export TORCH_DISTRIBUTED_DEBUG=INFO
 
 python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
-    --train_batch_size=256 \
-    --val_batch_size=256 \
+    --train_batch_size=128 \
+    --val_batch_size=128 \
     --wandb_mode=online \
     --wandb_resume=false \
     --max_epochs=100 \
     --accelerator=gpu \
     --devices=1 \
-    --num_workers=3 \
+    --num_workers=2 \
     --project_name=GeoClip \
     --mode=train \
     --train_epoch_length=2000 \
     --val_epoch_length=100 \
     --val_check_interval=100 \
     --project_name=GeoClip \
-    --run_name=geomoco_32_16k_scale_fix \
+    --run_name='geomoco_32_10k_geoembed_9600' \
     --vit='32' \
     --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt' \
     --ckpt_mode='soft' \
     --learning_rate=0.00005 \
+    --temperature=0.08 \
     --strategy='ddp_find_unused_parameters_false' \
-    --queue_size=15872 \
+    --queue_size=9600 \
     --dim_size=512 \
     --warmup_its=2500 \
-    --moco
+    --moco \
+    --geo_encode
+   
+   
+# --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt' \
 
 
     #/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/0j3bfqje/checkpoints/step=8900-val_loss=8.029.ckpt

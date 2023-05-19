@@ -15,11 +15,12 @@ def get_args():
 
     parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt')
     parser.add_argument('--test_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
-    parser.add_argument('--batch_size', type=int, default=2000)
+    parser.add_argument('--batch_size', type=int, default=3000)
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--geoclip_wt', type=float, default=0.5)
     parser.add_argument('--run_topk', action='store_true')
     parser.add_argument('--save_topk', action='store_true')
+    parser.add_argument('--k', type=int, default=5)
     args = parser.parse_args()
     return args
 
@@ -142,10 +143,10 @@ if __name__ == '__main__':
     #no gradient context manager for evaluation
     
     evaluation_dir = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/retrieval_results.txt'
-    alphas = [1]
+    alphas = [0]
     
     with open(evaluation_dir, 'a') as f:
-        to_write = f'alpha\tTop 5 accuracy\tLength of Test Set\n'
+        to_write = f'alpha\tTop {args.k} accuracy\tLength of Test Set\n'
         f.write(to_write)
         f.write('_______________________________________________________\n')
     
@@ -192,7 +193,7 @@ if __name__ == '__main__':
                     param.requires_grad=False
             
                 if args.run_topk:
-                    interpolated_metric = get_retrieval_metric(interpolated_model, sample, 5)
+                    interpolated_metric = get_retrieval_metric(interpolated_model, sample, args.k)
                     print(f'The retrieval metric for interpolated model is {interpolated_metric}')
                     
                     with open(evaluation_dir, 'a') as f:

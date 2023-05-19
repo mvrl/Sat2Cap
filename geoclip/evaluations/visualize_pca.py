@@ -32,10 +32,11 @@ def pca_viz(feats, locs, get_df=True):
 
 
     #plot 50000 points
-    img_path = f'{out_path}/clip_pca_grayscale_0.jpeg'
+    img_path = f'{out_path}/data_distribution.jpeg'
     plt.figure(figsize=[20, 8])
     #samp = np.linspace(0,len(locs)-1, len(locs))
-    plt.scatter(locs[:,1], locs[:,0], c=feats_clip[:,0], marker=".");
+    #plt.scatter(locs[:,1], locs[:,0], c=feats_clip[:,0], marker=".");
+    plt.scatter(locs[:,1], locs[:,0], marker=".");
     plt.savefig(img_path)
     plt.show()
     if get_df:
