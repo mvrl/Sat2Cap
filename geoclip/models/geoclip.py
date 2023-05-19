@@ -11,6 +11,8 @@ from .clip import Clip
 from ..multidata import MultiData
 from ..evaluations.metrics import Retrieval
 
+
+
 class GeoClip(pl.LightningModule):
 
     def __init__(self, hparams):
@@ -224,7 +226,8 @@ class GeoClip(pl.LightningModule):
 
     def configure_optimizers(self):
         print(f'Initializing Learning rate {self.hparams.learning_rate}')
-        self.optim = torch.optim.AdamW(filter(lambda p:p.requires_grad, self.imo_encoder.parameters()),
+        params = list(filter(lambda p:p.requires_grad, self.imo_encoder.parameters())) + list(self.logit_scale)
+        self.optim = torch.optim.AdamW(params,
             lr=self.hparams.learning_rate,
             weight_decay=0.2,
             betas=(0.9,0.98),

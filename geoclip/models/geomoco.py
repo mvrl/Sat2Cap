@@ -11,8 +11,33 @@ import numpy as np
 from ..multidata import MultiData
 from ..evaluations.metrics import Retrieval
 from .clip import Clip
+from .temp import temp_layer
+from .geoencode import GeoNet
 
+# utils
+@torch.no_grad()
+def concat_all_gather(tensor):
+    """
+    Performs all_gather operation on the provided tensors.
+    *** Warning ***: torch.distributed.all_gather has no gradient.
+    """
+    tensors_gather = [
+        torch.ones_like(tensor) for _ in range(torch.distributed.get_world_size())
+    ]
+    torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
 
+    output = torch.cat(tensors_gather, dim=0)
+    return output
+
+#compute cross_entropy
+def contrastive_loss(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    return nn.functional.cross_entropy(logits, labels)
+
+#computer cross entropy for the similarity matrix both rowwise and columnwise
+def clip_loss(similarity: torch.Tensor) -> torch.Tensor:
+    overhead_img_loss = contrastive_loss(similarity)
+    ground_img_loss = contrastive_loss(similarity.t())
+    return (overhead_img_loss + ground_img_loss) / 2.0
 
 class GeoMoCo(pl.LightningModule):
 
@@ -45,10 +70,16 @@ class GeoMoCo(pl.LightningModule):
         #trainable image encoder to get overhead image CLIP embeddings
         self.imo_encoder = Clip(self.hparams, 'overhead')
         self.imo_encoder.train()
+
+        #instatiate GeoNet
+        if self.hparams.geo_encode:
+            print('Using location date & time information')
+            self.geo_encoder = GeoNet()
+
         
         #instantiate the learnable temperature parameter and queue size
         self.K = self.hparams.queue_size
-        self.logit_scale = nn.Parameter(torch.tensor([np.log(1/self.hparams.temperature)]))       
+        self.temp_layer = temp_layer(self.hparams.temperature)       
         
         #initialize queue
         self.register_buffer('queue', torch.randn(self.hparams.dim_size,self.K))
@@ -95,13 +126,12 @@ class GeoMoCo(pl.LightningModule):
         pass
 
     #clamp the temperature parameter
-    def on_train_batch_end(self,outputs,batch, batch_idx):
-        if self.logit_scale.data > np.log(100):
-            self.logit_scale.data = torch.clamp(self.logit_scale.data, 0, np.log(100))
+    def on_before_zero_grad(self, *args, **kwargs):
+        self.temp_layer.logit_scale.data = torch.clamp(self.temp_layer.logit_scale.data, 0, 4.6052)
 
     #forward function that runs during inference
     def forward(self, batch):
-        img, imo, _,keys = batch
+        img, imo, geo_encodings, _, keys = batch
         #get the ground img encodings and detach
         with torch.set_grad_enabled(False): #equivalent to torch.no_grad()
             ground_img_embeddings, unnormalized_ground_img_embeddings = self.img_encoder(img)
@@ -109,9 +139,13 @@ class GeoMoCo(pl.LightningModule):
             unnormalized_ground_img_embeddings = unnormalized_ground_img_embeddings.to(self.device)
         #get the overhead image embeddings undetached
         overhead_img_embeddings, unnormalized_overhead_img_embeddings = self.imo_encoder(imo)
-        overhead_img_embeddings = ground_img_embeddings.to(self.device)
-        unnormalized_overhead_img_embeddings = unnormalized_ground_img_embeddings.to(self.device)
+        overhead_img_embeddings = overhead_img_embeddings.to(self.device)
+        unnormalized_overhead_img_embeddings = unnormalized_overhead_img_embeddings.to(self.device)
 
+        if self.hparams.geo_encode:
+            geo_embeddings = self.geo_encoder(geo_encodings)
+            unnormalized_overhead_img_embeddings = geo_embeddings + unnormalized_overhead_img_embeddings
+            overhead_img_embeddings = unnormalized_overhead_img_embeddings/unnormalized_overhead_img_embeddings.norm(p=2, dim=-1, keepdim=True)
 
         return{'ground_img_embeddings':ground_img_embeddings, 
             'overhead_img_embeddings':overhead_img_embeddings,
@@ -137,7 +171,7 @@ class GeoMoCo(pl.LightningModule):
         logits = torch.cat([l_pos, l_neg], dim=1)
 
         #Compute temperature
-        logit_scale = self.logit_scale.exp()
+        logit_scale = self.temp_layer.logit_scale.exp()
         # if logit_scale > 100:
         #     self.logit_scale = nn.Parameter(torch.tensor([np.log(100)]))
         #     logit_scale = self.logit_scale.exp()
@@ -178,7 +212,6 @@ class GeoMoCo(pl.LightningModule):
                     'logits_per_overhead_img': logits_per_overhead_img,
                     'normalized_ground_img_embeddings':normalized_ground_img_embeddings,
                     'normalized_overhead_img_embeddings':normalized_overhead_img_embeddings,
-                    'logit_scale':logit_scale
             }
     
     #forward pass for each batch in training 
@@ -190,7 +223,7 @@ class GeoMoCo(pl.LightningModule):
         self.log('loss', loss, sync_dist=True, batch_size=self.hparams.train_batch_size)
         self.log('contrastive_loss', train_contrastive_loss, prog_bar=True, sync_dist=True, batch_size=self.hparams.train_batch_size)
         self.log('prompt_loss', prompt_similarity_loss, prog_bar=True, sync_dist=True, batch_size=self.hparams.train_batch_size)
-        self.log('logit_scale', outputs['logit_scale'], prog_bar=True, batch_size=self.hparams.train_batch_size)
+        self.log('logit_scale', 1/self.temp_layer.logit_scale.exp(), prog_bar=True, batch_size=self.hparams.train_batch_size)
         return loss 
     
     #forward pass for each batch in validation
@@ -244,7 +277,8 @@ class GeoMoCo(pl.LightningModule):
 
     def configure_optimizers(self):
         print(f'Initializing Learning rate {self.hparams.learning_rate}')
-        self.optim = torch.optim.AdamW(filter(lambda p:p.requires_grad, self.imo_encoder.parameters()),
+        params = list(filter(lambda p:p.requires_grad, self.parameters())) #+ list(self.logit_scale)
+        self.optim = torch.optim.AdamW(params,
             lr=self.hparams.learning_rate,
             weight_decay=0.2,
             betas=(0.9,0.98),
@@ -271,7 +305,7 @@ class GeoMoCo(pl.LightningModule):
         fill_dataset = MultiData(self.hparams).get_ds(mode='queue')
         print('Filling Queue with initial values')
         for i, batch in tqdm(enumerate(fill_dataset)):
-            img, _, _,_ = batch
+            img, _, _,_,_ = batch
             #get the ground img encodings and detach
             with torch.set_grad_enabled(False): #equivalent to torch.no_grad()
                 normalized_ground_img_embeddings,_ = self.img_encoder(img)   #keys: NxC
@@ -387,27 +421,3 @@ class GeoMoCo(pl.LightningModule):
 
         return (ground_text_embeddings, overhead_text_embeddings)
 
-# utils
-@torch.no_grad()
-def concat_all_gather(tensor):
-    """
-    Performs all_gather operation on the provided tensors.
-    *** Warning ***: torch.distributed.all_gather has no gradient.
-    """
-    tensors_gather = [
-        torch.ones_like(tensor) for _ in range(torch.distributed.get_world_size())
-    ]
-    torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
-
-    output = torch.cat(tensors_gather, dim=0)
-    return output
-
-#compute cross_entropy
-def contrastive_loss(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-    return nn.functional.cross_entropy(logits, labels)
-
-#computer cross entropy for the similarity matrix both rowwise and columnwise
-def clip_loss(similarity: torch.Tensor) -> torch.Tensor:
-    overhead_img_loss = contrastive_loss(similarity)
-    ground_img_loss = contrastive_loss(similarity.t())
-    return (overhead_img_loss + ground_img_loss) / 2.0
