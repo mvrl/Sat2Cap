@@ -38,6 +38,15 @@ class MultiData(object):
             transforms.PILToTensor(),
             transforms.RandomCrop(size=(224,224)),
             transforms.RandAugment(num_ops=3, interpolation=transforms.InterpolationMode.BILINEAR)
+            transforms.Normazlize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
+        ])
+
+        self.imo_transforms = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.PILToTensor(),
+            transforms.RandomCrop(size=(224,224)),
+            transforms.RandAugment(num_ops=3, interpolation=transforms.InterpolationMode.BILINEAR)
+            transforms.Normazlize(mean = [0.3670, 0.3827, 0.3338], std = [0.2209, 0.1975, 0.1988])
         ])
 
         #random dates and time
@@ -131,7 +140,7 @@ if __name__ == '__main__':
     tick = time.time()
     for i, sample in enumerate(dataset):
         img, imo, geo_encode, json, key = sample
-        code.interact(local=dict(globals(), **locals()))
+    # code.interact(local=dict(globals(), **locals()))
         print(f'Sample no {i}\n{len(img)}')
         if i == 20:
             break

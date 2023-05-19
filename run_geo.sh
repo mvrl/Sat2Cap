@@ -2,14 +2,14 @@
 export TORCH_DISTRIBUTED_DEBUG=INFO
 
 python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
-    --train_batch_size=128 \
-    --val_batch_size=128 \
-    --wandb_mode=online \
+    --train_batch_size=100 \
+    --val_batch_size=100 \
+    --wandb_mode=disabled \
     --wandb_resume=false \
     --max_epochs=100 \
     --accelerator=gpu \
     --devices=1 \
-    --num_workers=2 \
+    --num_workers=3 \
     --project_name=GeoClip \
     --mode=train \
     --train_epoch_length=2000 \
@@ -23,9 +23,9 @@ python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdat
     --learning_rate=0.00005 \
     --temperature=0.08 \
     --strategy='ddp_find_unused_parameters_false' \
-    --queue_size=9600 \
+    --queue_size=200 \
     --dim_size=512 \
-    --warmup_its=2500 \
+    --warmup_its=3000 \
     --moco \
     --geo_encode
    
