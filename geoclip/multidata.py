@@ -27,6 +27,9 @@ def get_random_time(start,end):
     time_str = f'{random_hr}:00:00.0'
     return time_str
 
+def _convert_image_to_rgb(image):
+    return image.convert("RGB")
+
 class MultiData(object):
 
     def __init__(self,args):
@@ -35,18 +38,42 @@ class MultiData(object):
 
         self.img_transforms = transforms.Compose([
             transforms.Resize((224, 224)),
-            transforms.PILToTensor(),
-            transforms.RandomCrop(size=(224,224)),
-            transforms.RandAugment(num_ops=3, interpolation=transforms.InterpolationMode.BILINEAR)
-            transforms.Normazlize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225])
+            transforms.CenterCrop(size=(224,224)),
+            _convert_image_to_rgb,
+            transforms.ToTensor(),
+            transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
         ])
 
         self.imo_transforms = transforms.Compose([
+            transforms.RandomResizedCrop(size=(224,224), interpolation=transforms.InterpolationMode.BICUBIC),
+            transforms.RandAugment(num_ops=3, interpolation=transforms.InterpolationMode.BICUBIC),
+            _convert_image_to_rgb,
+            transforms.ToTensor(),
+            transforms.Normalize((0.3670, 0.3827, 0.3338), (0.2209, 0.1975, 0.1988))
+        ])
+
+        self.imo_transforms_original = transforms.Compose([
             transforms.Resize((224, 224)),
-            transforms.PILToTensor(),
-            transforms.RandomCrop(size=(224,224)),
-            transforms.RandAugment(num_ops=3, interpolation=transforms.InterpolationMode.BILINEAR)
-            transforms.Normazlize(mean = [0.3670, 0.3827, 0.3338], std = [0.2209, 0.1975, 0.1988])
+            transforms.CenterCrop(size=(224,224)),
+            _convert_image_to_rgb,
+            transforms.ToTensor(),
+            transforms.Normalize((0.3670, 0.3827, 0.3338), (0.2209, 0.1975, 0.1988))
+        ])
+
+        self.valid_img_transforms = transforms.Compose([
+            transforms.Resize((224,224)),
+            transforms.CenterCrop(size=(224,224)),
+            _convert_image_to_rgb,
+            transforms.ToTensor(),
+            transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+        ])
+
+        self.valid_imo_transforms = transforms.Compose([
+            transforms.Resize((224,224)),
+            transforms.CenterCrop(size=(224,224)),
+            _convert_image_to_rgb,
+            transforms.ToTensor(),
+            transforms.Normalize((0.3670, 0.3827, 0.3338), (0.2209, 0.1975, 0.1988))
         ])
 
         #random dates and time
@@ -54,24 +81,68 @@ class MultiData(object):
     def get_ds(self,mode):
         print(f'\nInitializing {mode} dataset')
         if mode=='train':
-            self.dataset = wds.WebDataset(self.args.train_path, resampled=True, handler=wds.warn_and_continue)
-            self.dataset = self.dataset.shuffle(1000).decode("pil").to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json","__key__").map(self.do_transforms).batched(self.args.train_batch_size).with_epoch(self.args.train_epoch_length)
+            self.dataset = wds.WebDataset(self.args.train_path, resampled=True)
+            self.dataset = self.dataset.shuffle(1000).decode("pil", handler=wds.warn_and_continue).to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json","__key__").map(self.do_transforms, handler=wds.warn_and_continue).batched(self.args.train_batch_size).with_epoch(self.args.train_epoch_length)
         
         elif mode=='test':
-            self.dataset = wds.WebDataset(self.args.vali_path, resampled=False, handler=wds.warn_and_continue)
-            self.dataset = self.dataset.decode("pil").to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json","__key__").map(self.do_transforms).batched(self.args.val_batch_size)
+            self.dataset = wds.WebDataset(self.args.vali_path)
+            self.dataset = self.dataset.decode("pil", handler=wds.warn_and_continue).to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json","__key__").map(self.do_valid_transforms, handler=wds.warn_and_continue).batched(self.args.val_batch_size)
         
         elif mode=='queue':
-            self.dataset = wds.WebDataset(self.args.fill_path, resampled=False, handler=wds.warn_and_continue)
-            self.dataset = self.dataset.decode("pil").to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json","__key__").map(self.do_transforms).batched(self.args.train_batch_size)
+            self.dataset = wds.WebDataset(self.args.fill_path)
+            self.dataset = self.dataset.decode("pil", handler=wds.warn_and_continue).to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json","__key__").map(self.do_valid_transforms, handler=wds.warn_and_continue).batched(self.args.train_batch_size)
         
         return self.dataset
 
+    def do_valid_transforms(self, sample):
+        img, imo,json, key = sample
+        img = self.valid_img_transforms(img)
+        imo = self.valid_imo_transforms(imo)
+        lat = json['latitude']
+        long = json['longitude']
+        lat_long_encode = torch.tensor([np.sin(np.pi*lat/90), np.cos(np.pi*lat/90), np.sin(np.pi*long/180), np.cos(np.pi*long/180)])
+
+        date_time = json['date_taken']
+        try:
+            date_str = date_time.split(' ')[0]
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+        except (IndexError, ValueError) as e:
+            date_str = get_random_date(2000,2015)
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+
+        try:
+            time_str = date_time.split(' ')[1]
+            time_obj = datetime.strptime(time_str, '%H:%M:%S.%f')
+        except (IndexError, ValueError) as e:
+            time_str = get_random_time(7,23)
+            time_obj = datetime.strptime(time_str, '%H:%M:%S.%f')
+
+        
+        #extract data info
+        max_year = 2015
+        min_year = 2000
+        year = date_obj.year
+        year = (year - max_year)/(max_year - min_year)
+        month = date_obj.month
+        day = date_obj.day
+
+        #extract time info
+        hour = time_obj.hour
+        
+        #date encoding
+        date_encode = torch.tensor([np.sin(2*np.pi*year), np.cos(2*np.pi*year),np.sin(2*np.pi*month/12), np.cos(2*np.pi*month/12), np.sin(2*np.pi*day/31), np.cos(2*np.pi*day/31)])
+
+        #time encoding
+        time_encode = torch.tensor([np.sin(2*np.pi*hour/23), np.cos(2*np.pi*hour/23)])
+
+
+        geo_encode = torch.cat([lat_long_encode, date_encode, time_encode]).to(dtype=torch.float32)
+        return img, imo,geo_encode,json,key
 
     def do_transforms(self, sample):
         img, imo,json, key = sample
         img = self.img_transforms(img)
-        imo = self.img_transforms(imo)
+        imo = self.imo_transforms(imo)
         lat = json['latitude']
         long = json['longitude']
         lat_long_encode = torch.tensor([np.sin(np.pi*lat/90), np.cos(np.pi*lat/90), np.sin(np.pi*long/180), np.cos(np.pi*long/180)])

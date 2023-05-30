@@ -11,8 +11,8 @@ from tqdm import tqdm, trange
 import skimage.io as io
 import code
 import PIL
-from ..models.geoclip import GeoClip
-
+from ..models.geomoco import GeoMoCo
+from ..utils.preprocess import Preprocess
 
 
 N = type(None)
@@ -222,10 +222,31 @@ def generate2(
 
     return generated_list[0]
 
+def path_to_lat(path):
+    img_name = path.split('/')[-1]
+    splits = img_name.split('_')
+    lat = splits[2]
+    long = splits[3].replace('.jpg', "")
+    return float(lat), float(long)
+
+def get_geo_encode(lat,long, date_time='2010-05-12 12:00:53.0'):
+    preprocessor = Preprocess()
+    geo_json = {'latitude':lat, 'longitude':long, 'date_taken':date_time}
+    geo_encoding = preprocessor.preprocess_meta(geo_json)
+    return geo_encoding
+
 if __name__ == '__main__':
-    image_model = 'geoclip'
-    ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt'
-    img_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/images/overhead_images/imo_lat_49.709016_long_0.20241_16.jpg'
+    image_model = 'clip'
+    
+    use_geo = True
+    date_time = '2012-05-20 23:00:00.0'
+    
+    #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt'
+    #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/f1dtv48z/checkpoints/step=38750-val_loss=4.976.ckpt'
+    #ckpt_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/s212e5he/checkpoints/step=35750-val_loss=4.972.ckpt' the best one so far
+    ckpt_path ='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/epoch=3-step=29500-top_k_score=0.920.ckpt'
+    img_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/247264250_18_57.574548_-4.091806.jpg'
+
 
     pretrained_model = 'Conceptual captions'  # @param ['COCO', 'Conceptual captions']
     #clip cap model path
@@ -255,7 +276,7 @@ if __name__ == '__main__':
     #pil_img = Image(filename=UPLOADED_FILE)
     pil_image = PIL.Image.open(img_path)
     #code.interact(local=dict(globals(), **locals()))
-    
+    geo_processor = Preprocess()
     with torch.no_grad():
         # if type(model) is ClipCaptionE2E:
         #     prefix_embed = model.forward_image(image)
@@ -271,11 +292,24 @@ if __name__ == '__main__':
             print('Using GeoClip')
             checkpoint = torch.load(ckpt_path)
             hparams = checkpoint['hyper_parameters']
-            geoclip_model = GeoClip(hparams=hparams).eval().to(device)
+            hparams['geo_encode'] = True
+            geoclip_model = GeoMoCo(hparams=hparams).eval().to(device)
             unused_params = geoclip_model.load_state_dict(checkpoint['state_dict'], strict=False)
             print(f'Couldn\'t load {unused_params}')
+
             imo_encoder = geoclip_model.imo_encoder
-            prefixes = [embeddings.to(device) for embeddings in imo_encoder(pil_image)]
+            image = geo_processor.preprocess_overhead([pil_image])
+
+            if use_geo:
+                geo_encoder = geoclip_model.geo_encoder.to('cpu')
+                lat, long = path_to_lat(img_path)
+                geo_encoding = get_geo_encode(lat, long, date_time)
+            #  code.interact(local=dict(globals(), **locals()))
+                geo_embeddings = [geo_encoder(geo_encoding).to(device), geo_encoder(geo_encoding).to(device)]
+                imo_embeddings = [embeddings.to(device) for embeddings in imo_encoder(image)]
+                prefixes = [(im_emb+geo_emb) for (im_emb,geo_emb) in zip(imo_embeddings, geo_embeddings)]
+            else:
+                prefixes = [embeddings.to(device) for embeddings in imo_encoder(image)]
         
         prefix_embeds = [model.clip_project(prefix).reshape(1, prefix_length, -1) for prefix in prefixes]
         
