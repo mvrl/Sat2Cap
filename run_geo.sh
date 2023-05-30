@@ -1,33 +1,96 @@
 #!/bin/bash
 export TORCH_DISTRIBUTED_DEBUG=INFO
+echo $CUDA_VISIBLE_DEVICES
+
 
 python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
     --train_batch_size=100 \
     --val_batch_size=100 \
-    --wandb_mode=disabled \
+    --wandb_mode=online \
     --wandb_resume=false \
     --max_epochs=100 \
     --accelerator=gpu \
     --devices=1 \
-    --num_workers=3 \
+    --num_workers=4 \
     --project_name=GeoClip \
     --mode=train \
     --train_epoch_length=2000 \
-    --val_epoch_length=100 \
-    --val_check_interval=100 \
+    --val_epoch_length=300 \
+    --val_check_interval=250 \
     --project_name=GeoClip \
-    --run_name='geomoco_32_10k_geoembed_9600' \
+    --wandb_resume='none' \
+    --run_name='geomoco_retrace' \
     --vit='32' \
-    --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt' \
-    --ckpt_mode='soft' \
+    --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/epoch=3-step=29500-top_k_score=0.920.ckpt' \
+    --ckpt_mode='hard' \
     --learning_rate=0.00005 \
-    --temperature=0.08 \
+    --temperature=0.07 \
     --strategy='ddp_find_unused_parameters_false' \
-    --queue_size=200 \
+    --queue_size=9000 \
     --dim_size=512 \
     --warmup_its=3000 \
+    --precision='medium' \
     --moco \
     --geo_encode
+
+# python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
+#     --train_batch_size=100 \
+#     --val_batch_size=100 \
+#     --wandb_mode=online \
+#     --wandb_resume=false \
+#     --max_epochs=100 \
+#     --accelerator=gpu \
+#     --devices=1 \
+#     --num_workers=4 \
+#     --project_name=GeoClip \
+#     --mode=train \
+#     --train_epoch_length=2000 \
+#     --val_epoch_length=300 \
+#     --val_check_interval=250 \
+#     --project_name=GeoClip \
+#     --run_name='geomoco_32_9k_fresh_geoencode' \
+#     --vit='32' \
+#     --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/f1dtv48z/checkpoints/step=9000-val_loss=6.212.ckpt' \
+#     --ckpt_mode='hard' \
+#     --wandb_resume='f1dtv48z' \
+#     --learning_rate=0.00005 \
+#     --temperature=0.07 \
+#     --strategy='ddp_find_unused_parameters_false' \
+#     --queue_size=9000 \
+#     --dim_size=512 \
+#     --warmup_its=3000 \
+#     --precision='medium' \
+#     --moco \
+#     --geo_encode
+
+# python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
+#     --train_batch_size=100 \
+#     --val_batch_size=100 \
+#     --wandb_mode=online \
+#     --wandb_resume=false \
+#     --max_epochs=100 \
+#     --accelerator=gpu \
+#     --devices=1 \
+#     --num_workers=3 \
+#     --project_name=GeoClip \
+#     --mode=train \
+#     --train_epoch_length=2000 \
+#     --val_epoch_length=300 \
+#     --val_check_interval=100 \
+#     --project_name=GeoClip \
+#     --run_name='geo_embed_geomoco_32_9k_noencode' \
+#     --vit='32' \
+#     --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt' \
+#     --ckpt_mode='soft' \
+#     --learning_rate=0.00005 \
+#     --temperature=0.07 \
+#     --strategy='ddp_find_unused_parameters_false' \
+#     --queue_size=9000 \
+#     --dim_size=512 \
+#     --warmup_its=3000 \
+#     --precision='medium' \
+#     --moco \
+#     --geo_encode
    
    
 # --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt' \

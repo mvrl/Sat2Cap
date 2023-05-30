@@ -11,7 +11,7 @@ import glob
 #code.interact(local=dict(globals(), **locals()))
 
 #local imports
-from ..geoclip import GeoClip
+from ..geomoco import GeoMoCo 
 from ..utils.random_seed import set_seed
 from ..multidata import MultiData
 
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     #load pretrained model
-    pretrained_model = GeoClip.load_from_checkpoint(ckpt_path).eval()
+    pretrained_model = GeoMoCo.load_from_checkpoint(ckpt_path).eval()
     geoclip = pretrained_model.imo_encoder.eval().to(device)
     for params in geoclip.parameters():
         params.requires_grad=False

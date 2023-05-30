@@ -118,7 +118,10 @@ class GeoMoCo(pl.LightningModule):
         #confirm training state for two encoders
         print(f'Ground Level Image encoder training mode:{self.img_encoder.training}')
         print(f'Overhead Image encoder training model:{self.imo_encoder.training}')
-
+        if self.hparams.geo_encode:
+            print('Geo Encoding Used')
+        else:
+            print('Geo Encoding Not Used')
 
     #fill the queue with initial values    
     def on_fit_start(self):
@@ -143,7 +146,10 @@ class GeoMoCo(pl.LightningModule):
         unnormalized_overhead_img_embeddings = unnormalized_overhead_img_embeddings.to(self.device)
 
         if self.hparams.geo_encode:
+            geo_dropout = np.random.uniform(0,1)
             geo_embeddings = self.geo_encoder(geo_encodings)
+            if geo_dropout < 0:
+                geo_embeddings = geo_embeddings*0
             unnormalized_overhead_img_embeddings = geo_embeddings + unnormalized_overhead_img_embeddings
             overhead_img_embeddings = unnormalized_overhead_img_embeddings/unnormalized_overhead_img_embeddings.norm(p=2, dim=-1, keepdim=True)
 

@@ -50,6 +50,7 @@ def get_args():
     parser.add_argument('--normalize_embeddings', type=bool, default=True)
     parser.add_argument('--freeze_clip', type=bool, default=True)
     parser.add_argument('--max_epochs', type=int, default=10)
+    parser.add_argument('--max_steps', type=int, default=35752)
     parser.add_argument('--strategy', type=str, default='ddp_find_unused_parameters_false')
     parser.add_argument('--accelerator', type=str, default='gpu')
     parser.add_argument('--devices', type=int, default=1)
@@ -96,6 +97,10 @@ def get_args():
     #metrics hparams
     parser.add_argument('--top_k', type=int, default=5)
 
+    #environmet hparams
+    parser.add_argument('--precision', type=str, default='highest')
+
+
     args = parser.parse_args()
     return args
 
@@ -103,6 +108,9 @@ def main(args):
     #set learning rate logger
     print('Starting Training')
     
+    if args.precision:
+        print(f'Setting precision to {args.precision}')
+        torch.set_float32_matmul_precision(args.precision)
     #initliaze model
     if args.moco:
         geoclip = GeoMoCo(args)
@@ -112,10 +120,12 @@ def main(args):
     #initialize checkpoints and loggers
     lr_logger = LearningRateMonitor(logging_interval='step')
     if args.wandb_resume.lower()=='none':
-        args.resume = None
-    wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, name=args.run_name, mode=args.wandb_mode)#, resume=args.wandb_resume 
+        wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, name=args.run_name, mode=args.wandb_mode)
+    else:
+        wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, mode=args.wandb_mode, resume=args.wandb_resume)
+    #, resume=args.wandb_resume 
     ckpt_monitors = ((
-            ModelCheckpoint(monitor='val_loss', filename='{step}-{val_loss:.3f}', mode='min', save_top_k=2, save_last=True),
+            ModelCheckpoint(monitor='val_loss', filename='{step}-{val_loss:.3f}', mode='min', save_top_k=15, save_last=True),
                 ModelCheckpoint(monitor='top_k_score',filename='{epoch}-{step}-{top_k_score:.3f}', mode='max', save_top_k=2, save_last=True)
 
         ))
@@ -126,7 +136,7 @@ def main(args):
         accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger])
     elif args.mode == 'train':
         print('Training Run')
-        trainer = pl.Trainer(precision='32', max_epochs=args.max_epochs, logger=wb_logger, strategy=args.strategy, num_sanity_val_steps=0, 
+        trainer = pl.Trainer(precision='32', max_steps=args.max_steps, logger=wb_logger, strategy=args.strategy, num_sanity_val_steps=0, 
         accelerator=args.accelerator, devices=args.devices, callbacks=[*ckpt_monitors, lr_logger], 
         val_check_interval=args.val_check_interval, check_val_every_n_epoch=None, limit_val_batches=args.val_epoch_length,
         log_every_n_steps=15)

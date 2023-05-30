@@ -26,10 +26,11 @@ class Clip(pl.LightningModule):
         elif self.img_type == 'overhead':
             print(f'Overhead Clip instantiated with {self.vit}')
             self.vision_model = CLIPVisionModelWithProjection.from_pretrained(self.vit).train()
-        print(f'The device is {self.vision_model.device}')
+        #print(f'The device is {self.vision_model.device}')
         #print(self.vision_model.config)
 
     def forward(self,x):
+        #print(f'The device is {self.vision_model.device}')
         x = x.to(self.vision_model.device, dtype=torch.float32)
         batch_tensors = self.vision_model(x)
         unnormalized_batch_embeddings = batch_tensors.image_embeds
