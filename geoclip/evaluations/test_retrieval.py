@@ -9,8 +9,9 @@ from torchvision import transforms
 #local imports
 #from ..multidata_2 import MultiData
 from ..multidata import MultiData as MultiData
-from ..multidata_2 import MultiData as MultiData_2
+from ..multidata_raw import MultiDataRaw
 from ..models.geomoco import GeoMoCo
+from ..utils import utils, preprocess
 from .metrics import Retrieval
 
 
@@ -18,7 +19,8 @@ def get_args():
     parser = ArgumentParser(description='arguments for runnning retrieval metrics', formatter_class=RawTextHelpFormatter)
 
     #parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt')
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/f1dtv48z/checkpoints/step=71250-val_loss=4.357.ckpt')
+    #parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/f1dtv48z/checkpoints/step=71250-val_loss=4.357.ckpt')
+    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
     parser.add_argument('--test_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
     parser.add_argument('--batch_size', type=int, default=3000)
     parser.add_argument('--device', type=str, default='cpu')
@@ -28,11 +30,15 @@ def get_args():
     parser.add_argument('--k', type=int, default=5)
     parser.add_argument('--clip', action='store_true', help='Run inference on normal CLIP model')
     parser.add_argument('--geo_encode', action='store_true', default=False)
+    parser.add_argument('--date_time', type=str, default='')
+    parser.add_argument('--save_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/retrieval_images')
+    parser.add_argument('--evaluation_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/retrieval_results_g2o.txt')
     args = parser.parse_args()
     return args
 
 
 def get_retrieval_metric(model, sample, k=5):
+    
     data_size = len(sample)
     embeddings = model(sample)
     print('Output keys:',embeddings.keys())
@@ -40,9 +46,12 @@ def get_retrieval_metric(model, sample, k=5):
     overhead_img_embeddings = embeddings['overhead_img_embeddings']
     print(f'Size of retrieval data {len(ground_img_embeddings)}')
     keys = embeddings['keys']
+    
     retrieval = Retrieval(k=k)
-    metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings)
-    return metric
+    metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings, g2o=True)
+    median_metric = retrieval.get_median_metric()
+    return metric, median_metric
+
 
 def image_grid(imgs, rows, cols):
     assert len(imgs) == rows*cols
@@ -67,37 +76,58 @@ def de_norm(x,normalization):
 def _convert_image_to_rgb(image):
     return image.convert("RGB")
 
-def save_top_k(model, batch, k=5):
-    valid_imo_transforms = transforms.Compose([
-            transforms.Resize((224,224)),
-            transforms.CenterCrop(size=(224,224)),
-            _convert_image_to_rgb,
-            transforms.ToTensor(),
-            transforms.Normalize((0.3670, 0.3827, 0.3338), (0.2209, 0.1975, 0.1988))
-        ])
+def save_top_k(model, batch,args, k=5):
+    # valid_imo_transforms = transforms.Compose([
+    #         transforms.Resize((224,224)),
+    #         transforms.CenterCrop(size=(224,224)),
+    #         _convert_image_to_rgb,
+    #         transforms.ToTensor(),
+    #         transforms.Normalize((0.3670, 0.3827, 0.3338), (0.2209, 0.1975, 0.1988))
+    #     ])
 
-    img_normalize = [[0.48145466, 0.4578275, 0.40821073], [0.26862954, 0.26130258, 0.27577711]]
-    imo_normalize = [[0.3670, 0.3827, 0.3338], [0.2209, 0.1975, 0.1988]]
-    to_pil = transforms.ToPILImage(mode='RGB')
-    
+    # img_normalize = [[0.48145466, 0.4578275, 0.40821073], [0.26862954, 0.26130258, 0.27577711]]
+    # imo_normalize = [[0.3670, 0.3827, 0.3338], [0.2209, 0.1975, 0.1988]]
+    # to_pil = transforms.ToPILImage(mode='RGB')
+    geo_processor = preprocess.Preprocess()
     data_size = len(batch)
-    ground_images_old, overhead_images_old, geoencode, metadata, keys = batch
-    
-    overhead_images_new = torch.stack([valid_imo_transforms(img) for img in overhead_images_old])
-    print(overhead_images_new.shape)
-    ground_images = [to_pil(de_norm(im, img_normalize)) for im in ground_images_old]
-    overhead_images = overhead_images_old
 
-    batch = (ground_images_old, overhead_images_new, geoencode, metadata, keys)
+    ground_images_raw, overhead_images_raw, metadata, keys = batch
+    
+    overhead_images = geo_processor.preprocess_overhead(overhead_images_raw)
+    ground_images = geo_processor.preprocess_ground(ground_images_raw)
+    
+    
+    if not args.date_time:
+        print('Using Ground Date_Time')
+        geoencode = utils.get_stacked_geoencode(metadata)
+    else:
+        print('Using Custom Date-Time')
+        new_meta = []
+        for meta in metadata:
+            temp_dict = {}
+            temp_dict['latitude'] = meta['latitude']
+            temp_dict['longitude'] = meta['longitude']
+            temp_dict['date_taken'] = args.date_time
+            new_meta.append(temp_dict)
+        geoencode = utils.get_stacked_geoencode(new_meta)
+            
+
+    # overhead_images_new = torch.stack([valid_imo_transforms(img) for img in overhead_images_old])
+    # print(overhead_images_new.shape)
+    # ground_images = [to_pil(de_norm(im, img_normalize)) for im in ground_images_old]
+    # overhead_images = overhead_images_old
+
+    batch = (ground_images, overhead_images, geoencode, metadata, keys)
         
     with torch.no_grad():
         embeddings = model(batch)
     print('Output keys:',embeddings.keys())
 
     # Define the sample data
-    sample = {'overhead_images': overhead_images, 'ground_images': ground_images, 'metadata': metadata}
+    ground_images_raw = [im.resize((224,224)) for im in ground_images_raw]
+    sample = {'overhead_images': overhead_images_raw, 'ground_images': ground_images_raw, 'metadata': metadata}
 
-    
+
     # Define a dictionary to map the sample ID to an integer index
     sample_index = {num: i for i, num in enumerate(embeddings['keys'])}
 
@@ -124,8 +154,8 @@ def save_top_k(model, batch, k=5):
             correct_indices.append(i)
 
     # Save the top 10 overhead images with highest accuracy and their top 5 similar ground images
-    top_k_indices = np.random.permutation(correct_indices)[0:30]
-
+    top_k_indices = np.random.permutation(correct_indices)[0:50]
+    top_k_indices = [i for i in range(300)]
     for i in top_k_indices:
         overhead_img = sample['overhead_images'][i]
         overhead_emb = embeddings['overhead_img_embeddings'][i].to('cpu')
@@ -134,6 +164,7 @@ def save_top_k(model, batch, k=5):
         curr_meta = metadata[i]
         curr_lat = curr_meta['latitude']
         curr_long = curr_meta['longitude']
+        curr_key = keys[i]
         # Get the top 5 most similar ground level images and their corresponding similarities
         similarity_row = similarity_matrix[i]
         #similarity_row[sample_index[embeddings['keys'][i]]] = -1.0  # Remove the correct ground embedding from consideration
@@ -151,8 +182,8 @@ def save_top_k(model, batch, k=5):
         
         combined_img = image_grid([overhead_img, ground_img_grid], 1,2)
         
-        r = np.random.randint(0,1000)
-        combined_img.save(f'/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/retrieval_images/lat_{curr_lat}_long_{curr_long}_{r}.jpg')
+        r = np.random.randint(0,10000)
+        combined_img.save(f'{args.save_path}/{curr_key}_lat_{curr_lat}_long_{curr_long}.jpg')
         #ground_img_grid.save(f'/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/retrieval_images/ground_lat_{curr_lat}_long_{curr_long}_{r}.jpg')
         # for j, idx in enumerate(top_ground_indices):
         #     ground_img = sample['ground_images'][idx]
@@ -162,20 +193,6 @@ def save_top_k(model, batch, k=5):
         #     # ...
         #     print(f"  {j+1}. Similarity: {similarity:.4f}")
 
-
-
-def get_retrieval_metric(model, sample, k=1):
-    data_size = len(sample)
-    embeddings = model(sample)
-    print('Output keys:',embeddings.keys())
-    ground_img_embeddings = embeddings['ground_img_embeddings']
-    overhead_img_embeddings = embeddings['overhead_img_embeddings']
-    print(f'Size of retrieval data {len(ground_img_embeddings)}')
-    keys = embeddings['keys']
-    retrieval = Retrieval(k=k)
-    metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings)
-    return metric
-
 def get_dataloader_1(val_batch_size, vali_path):
     loader_args = Namespace()
     loader_args.val_batch_size = val_batch_size
@@ -183,96 +200,94 @@ def get_dataloader_1(val_batch_size, vali_path):
     dataset = MultiData(loader_args).get_ds('test')
     return dataset
 
-def get_dataloader_2(val_batch_size, vali_path):
+def get_dataloader_raw(val_batch_size, vali_path):
     loader_args = Namespace()
     loader_args.val_batch_size = val_batch_size
     loader_args.vali_path = vali_path
-    dataset = MultiData_2(loader_args).get_ds('test')
+    dataset = MultiDataRaw(loader_args).get_ds('test')
     return dataset
 
 if __name__ == '__main__':
+    utils.set_seed(56)
     args = get_args() 
     device = torch.device(args.device)
     #no gradient context manager for evaluation
     
-    evaluation_dir = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/retrieval_results.txt'
-    alphas = [0]
     
-    with open(evaluation_dir, 'a') as f:
-        to_write = f'alpha\tTop {args.k} accuracy\tLength of Test Set\n'
+    
+    with open(args.evaluation_dir, 'a') as f:
+        to_write = 'Writing for new experiment'
         f.write(to_write)
         f.write('_______________________________________________________\n')
     
-    for alpha in alphas:
-        args.geoclip_wt=alpha
-        print(f'Using alpha {args.geoclip_wt}')
-        with torch.set_grad_enabled(False):
-            #load pretrained weights
+    with torch.set_grad_enabled(False):
+        #load pretrained weights
+            checkpoint = torch.load(args.ckpt_path)
+            hparams = checkpoint['hyper_parameters']
+    
+            #set new hyper parameters
+            hparams['val_batch_size'] = args.batch_size
+            hparams['test_path'] = args.test_path 
+            hparams['prompt_loss'] = None         
 
+            if not args.geo_encode:
+                hparams['geo_encode'] = False
+            print(f'Geo Encoding Used:{hparams["geo_encode"]}')      
+            geoclip = GeoMoCo(hparams=hparams).eval().to(device)
 
-                checkpoint = torch.load(args.ckpt_path)
-                hparams = checkpoint['hyper_parameters']
-        
-                #set new hyper parameters
-                hparams['val_batch_size'] = args.batch_size
-                hparams['test_path'] = args.test_path 
-                hparams['prompt_loss'] = None         
-
-                if not args.geo_encode:
-                    hparams['geo_encode'] = False      
-                geoclip = GeoMoCo(hparams=hparams).eval().to(device)
-
-                #set requires grad to false
-                for param in geoclip.parameters():
-                    param.requires_grad=False
-                if not args.clip:
-                    print('Using GeoClip')
-                    unused_params = geoclip.load_state_dict(checkpoint['state_dict'], strict=False)
-                    print(f'Unused params {unused_params}')
-                else:
-                    print('Using Regular CLIP')
-                
-
-                
-                ######## code for model interpolation ##########################################################
-                # #compute the metric for baseline CLIP
-                # baseline_clip = GeoMoCo(hparams=hparams).eval().to(device)
-                # for param in baseline_clip.parameters():
-                #     param.requires_grad=False
-
-                # #get the interpolated model
-                # baseline_dict = baseline_clip.state_dict()
-                # trained_dict = geoclip.state_dict()
-
-                # for key in baseline_dict:
-                #     trained_dict[key] = (1-args.geoclip_wt)*baseline_dict[key]+args.geoclip_wt*trained_dict[key]
-
-                # interpolated_model = GeoClip(hparams=hparams).eval().to(device)
-                # interpolated_model = interpolated_model
-                # unused_params = interpolated_model.load_state_dict(trained_dict, strict=False)
-                # print(f'Unused params {unused_params}')
-                # for param in interpolated_model.parameters():
-                #     param.requires_grad=False
-
-                ##########################################################################################################################
+            #set requires grad to false
+            for param in geoclip.parameters():
+                param.requires_grad=False
+            if not args.clip:
+                print('Using GeoClip')
+                unused_params = geoclip.load_state_dict(checkpoint['state_dict'], strict=False)
+                print(f'Unused params {unused_params}')
+            else:
+                print('Using Regular CLIP')
             
-                if args.run_topk:
-                    val_dataloader = get_dataloader_1(args.batch_size, args.test_path)
-                    sample = next(iter(val_dataloader))
-                    print('Samples Loaded')
-                    print('Running topk metric')
-                    geoclip_metric = get_retrieval_metric(geoclip, sample, args.k)
-                    print(f'The retrieval metric for geoclip model is {geoclip_metric}')
-                    
-                    with open(evaluation_dir, 'a') as f:
-                        to_write = f'{args.geoclip_wt}\t{geoclip_metric}\t{args.batch_size}\n'
-                        f.write(to_write)
-                        f.write('_______________________________________________________\n')
 
-                if args.save_topk:
-                    val_dataloader = get_dataloader_2(args.batch_size, args.test_path)
-                    sample = next(iter(val_dataloader))
-                    print('Samples Loaded')
-                    print('Saving topk')
-                    save_top_k(geoclip, sample, 9)
+            
+            ######## code for model interpolation ##########################################################
+            # #compute the metric for baseline CLIP
+            # baseline_clip = GeoMoCo(hparams=hparams).eval().to(device)
+            # for param in baseline_clip.parameters():
+            #     param.requires_grad=False
+
+            # #get the interpolated model
+            # baseline_dict = baseline_clip.state_dict()
+            # trained_dict = geoclip.state_dict()
+
+            # for key in baseline_dict:
+            #     trained_dict[key] = (1-args.geoclip_wt)*baseline_dict[key]+args.geoclip_wt*trained_dict[key]
+
+            # interpolated_model = GeoClip(hparams=hparams).eval().to(device)
+            # interpolated_model = interpolated_model
+            # unused_params = interpolated_model.load_state_dict(trained_dict, strict=False)
+            # print(f'Unused params {unused_params}')
+            # for param in interpolated_model.parameters():
+            #     param.requires_grad=False
+
+            ##########################################################################################################################
+        
+            if args.run_topk:
+                val_dataloader = get_dataloader_1(args.batch_size, args.test_path)
+                sample = next(iter(val_dataloader))
+                print('Samples Loaded')
+                print('Running topk metric')
+                geoclip_metric, median_metric = get_retrieval_metric(geoclip, sample, args.k)
+                
+                print(f'The top-{args.k} metric for geoclip model is {geoclip_metric}')
+                print(f'The median metric for geoclip model is {median_metric}')
+                
+                with open(args.evaluation_dir, 'a') as f:
+                    to_write = f'model:{args.ckpt_path}\ttop_k:{args.k}\tmetric:{geoclip_metric}\tmedian_metric:{median_metric}\tbatch_size:{args.batch_size}\tgeoencode:{args.geo_encode}\n'
+                    f.write(to_write)
+                    f.write('_______________________________________________________\n')
+
+            if args.save_topk:
+                val_dataloader = get_dataloader_raw(args.batch_size, args.test_path)
+                sample = next(iter(val_dataloader))
+                print('Samples Loaded')
+                print('Saving topk')
+                save_top_k(geoclip, sample,args, 9)
     # code.interact(local=dict(globals(), **locals()))

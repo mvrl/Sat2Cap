@@ -11,18 +11,20 @@ import glob
 #code.interact(local=dict(globals(), **locals()))
 
 #local imports
-from ..geomoco import GeoMoCo 
+from ..models.geomoco import GeoMoCo 
 from ..utils.random_seed import set_seed
 from ..multidata import MultiData
+from ..utils.preprocess import Preprocess
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/st07vzqb/checkpoints/epoch=0-step=2500-top_k_score=0.820.ckpt')
+    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
     parser.add_argument('--batch_size', type=int, default=500)
-    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/geoclip_embeddings')
-    parser.add_argument('--test_dir', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/*.tar')
-    parser.add_argument('--embedding_size', type=int, default=512)
-    parser.add_argument('--max_size', default=None)
+    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/geoembed_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957')
+    parser.add_argument('--test_dir', type=str, default='/home/a.dhakal/active/proj_smart/BING_IMG/netherland_bing/')
+
+    parser.add_argument('--embedding_size', type=int, default=540)
+    parser.add_argument('--max_size', default=147420)
 
     args = parser.parse_args()
     return args
@@ -43,7 +45,7 @@ if __name__ == '__main__':
     #find path to all input shards
     test_dir=args.test_dir
     test_paths = glob.glob(test_dir)
-    
+    test_paths = ['/home/a.dhakal/active/datasets/YFCC100m/webdataset/3fc3d5d7-d373-455f-8430-334217190f1c.tar']
     #remove paths which have already been traversed over
     print(f'Total Input Paths: {len(test_paths)}')
     [test_paths.remove(path) if path.split('/')[-1].split('.')[0] in existing_files else 1 for path in test_paths]
@@ -55,6 +57,9 @@ if __name__ == '__main__':
     #load pretrained model
     pretrained_model = GeoMoCo.load_from_checkpoint(ckpt_path).eval()
     geoclip = pretrained_model.imo_encoder.eval().to(device)
+
+    geo_processor = Preprocess()
+    all_img_paths = 
     for params in geoclip.parameters():
         params.requires_grad=False
     
@@ -76,18 +81,21 @@ if __name__ == '__main__':
             dset_tensor = f.create_dataset('tensor', shape=(0,embedding_size), maxshape=(max_size, embedding_size), dtype=np.float32)
             dset_location = f.create_dataset('location', shape=(0, 2), maxshape=(max_size, 2), dtype=np.float32)
         
+        
         with h5py.File(output_path, 'a') as f:
             print('Adding data to h5 file')
             print(f'Running on {device}')
             dset_tensor = f['tensor']
             dset_location = f['location']
+            #code.interact(local=dict(globals(), **locals()))
             for i,sample in tqdm(enumerate(dataset)):
-                _,imo,json,_ = sample
+                _, imo, geo_encodings, json, _ = sample
                 if len(imo)<batch_size:
                     this_bs = len(imo)
                     location = np.array([np.array([js['latitude'],js['longitude']]) for js in json])
-                    normalized_imo_embeddings = geoclip.forward(imo).detach()
-                    
+                    #normalized_imo_embeddings = geoclip.forward(imo).detach()
+                    embeddings = pretrained_model.forward(sample)
+                    normalized_imo_embeddings = embeddings['overhead_img_embeddings'].detach()
                     #resize dataset by adding the last batch_size 
                     new_size = dset_tensor.shape[0]+this_bs
                     dset_tensor.resize((new_size,embedding_size))
@@ -103,7 +111,8 @@ if __name__ == '__main__':
                     print(f'Max size {max_size} reached\nExiting')
                     break           
                 location = np.array([np.array([js['latitude'],js['longitude']]) for js in json])
-                normalized_imo_embeddings = geoclip.forward(imo).detach()
+                embeddings = pretrained_model.forward(sample)
+                normalized_imo_embeddings = embeddings['overhead_img_embeddings'].detach()
                 #resize dataset to fit the new embeddings
                 new_size = dset_tensor.shape[0]+batch_size
                 dset_tensor.resize((new_size,embedding_size))

@@ -2,6 +2,7 @@ import pytorch_lightning as pl
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from argparse import ArgumentParser, RawTextHelpFormatter 
 import code
 
@@ -15,13 +16,40 @@ class Retrieval(object):
     def get_similarity(self):
         return  torch.matmul(self.normalized_overhead_img_embeddings,self.normalized_ground_img_embeddings.t()) # (BxB - ground_imgs X overhead_imgs)
 
+    def get_median_metric(self):
+        cos_sim = self.similarity_per_overhead_img.detach().cpu().numpy()
+        distance_matrix = cos_sim
+        K = cos_sim.shape[0]
+        # Evaluate Img2Sound
+        results = []
+        for i in list(range(K)):
+            tmpdf = pd.DataFrame(dict(
+                k_snd = i,
+                dist = distance_matrix[:, i]
+            )).set_index('k_snd')
 
-    def fit_k_similar(self, normalized_overhead_img_embeddings, normalized_ground_img_embeddings):
+            tmpdf['rank'] = tmpdf.dist.rank(ascending=False)
+            res = dict(
+                rank=tmpdf.iloc[i]['rank']
+            )
+            results.append(res)
+        df = pd.DataFrame(results)
+        median_rank = df['rank'].median()
+        
+        return median_rank
+
+        
+
+
+    def fit_k_similar(self, normalized_overhead_img_embeddings, normalized_ground_img_embeddings, g2o=False):
        
         self.normalized_overhead_img_embeddings = normalized_overhead_img_embeddings
         self.normalized_ground_img_embeddings = normalized_ground_img_embeddings
 
         self.similarity_per_overhead_img = self.get_similarity()
+
+        if g2o:
+            self.similarity_per_overhead_img = self.similarity_per_overhead_img.T
         
         #get top k similar overhead img for each ground level img
         top_k_vals, top_k_idx = self.similarity_per_overhead_img.topk(self.k)
