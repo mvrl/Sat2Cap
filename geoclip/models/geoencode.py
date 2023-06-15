@@ -9,6 +9,7 @@ class GeoNet(nn.Module):
         super().__init__()
         self.fc1 = nn.Linear(12, 64)
         self.fc2 = nn.Linear(64,fc_dim)
+       
 
     def forward(self, x):
         x = self.fc1(x)
