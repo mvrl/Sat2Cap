@@ -3,12 +3,15 @@ export TORCH_DISTRIBUTED_DEBUG=INFO
 echo $CUDA_VISIBLE_DEVICES
 
 
+
+###fresh#####
 python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
     --train_batch_size=100 \
     --val_batch_size=100 \
     --wandb_mode=online \
-    --wandb_resume=false \
+    --wandb_resume=none \
     --max_epochs=100 \
+    --max_steps=10000 \
     --accelerator=gpu \
     --devices=1 \
     --num_workers=4 \
@@ -18,11 +21,10 @@ python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdat
     --val_epoch_length=300 \
     --val_check_interval=250 \
     --project_name=GeoClip \
-    --wandb_resume='none' \
-    --run_name='geomoco_retrace' \
+    --run_name='geomoco_nodrop_10k' \
     --vit='32' \
-    --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/epoch=3-step=29500-top_k_score=0.920.ckpt' \
-    --ckpt_mode='hard' \
+    --ckpt_path='none' \
+    --ckpt_mode='soft' \
     --learning_rate=0.00005 \
     --temperature=0.07 \
     --strategy='ddp_find_unused_parameters_false' \
@@ -33,6 +35,9 @@ python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdat
     --moco \
     --geo_encode
 
+
+
+##retrace####
 # python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
 #     --train_batch_size=100 \
 #     --val_batch_size=100 \
@@ -48,11 +53,11 @@ python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdat
 #     --val_epoch_length=300 \
 #     --val_check_interval=250 \
 #     --project_name=GeoClip \
-#     --run_name='geomoco_32_9k_fresh_geoencode' \
+#     --wandb_resume='none' \
+#     --run_name='geomoco_retrace' \
 #     --vit='32' \
-#     --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/f1dtv48z/checkpoints/step=9000-val_loss=6.212.ckpt' \
+#     --ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/epoch=3-step=29500-top_k_score=0.920.ckpt' \
 #     --ckpt_mode='hard' \
-#     --wandb_resume='f1dtv48z' \
 #     --learning_rate=0.00005 \
 #     --temperature=0.07 \
 #     --strategy='ddp_find_unused_parameters_false' \
@@ -62,6 +67,8 @@ python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdat
 #     --precision='medium' \
 #     --moco \
 #     --geo_encode
+
+
 
 # python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
 #     --train_batch_size=100 \

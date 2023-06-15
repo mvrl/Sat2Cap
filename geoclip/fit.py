@@ -125,7 +125,7 @@ def main(args):
         wb_logger = WandbLogger(save_dir=args.log_dir,project=args.project_name, mode=args.wandb_mode, resume=args.wandb_resume)
     #, resume=args.wandb_resume 
     ckpt_monitors = ((
-            ModelCheckpoint(monitor='val_loss', filename='{step}-{val_loss:.3f}', mode='min', save_top_k=15, save_last=True),
+            ModelCheckpoint(monitor='val_loss', filename='{step}-{val_loss:.3f}', mode='min', save_top_k=20, save_last=True),
                 ModelCheckpoint(monitor='top_k_score',filename='{epoch}-{step}-{top_k_score:.3f}', mode='max', save_top_k=2, save_last=True)
 
         ))

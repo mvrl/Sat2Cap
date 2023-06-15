@@ -10,6 +10,7 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel, AdamW, get_linear_sched
 from tqdm import tqdm, trange
 import skimage.io as io
 import code
+from argparse import ArgumentParser
 import PIL
 from ..models.geomoco import GeoMoCo
 from ..utils.preprocess import Preprocess
@@ -229,25 +230,47 @@ def path_to_lat(path):
     long = splits[3].replace('.jpg', "")
     return float(lat), float(long)
 
-def get_geo_encode(lat,long, date_time='2010-05-12 12:00:53.0'):
+def get_geo_encode(lat,long, date_time='2010-05-05 01:01:53.0'):
     preprocessor = Preprocess()
     geo_json = {'latitude':lat, 'longitude':long, 'date_taken':date_time}
     geo_encoding = preprocessor.preprocess_meta(geo_json)
     return geo_encoding
 
+def get_args():
+    parser = ArgumentParser()
+    parser.add_argument('--model_type', type=str, default='geoclip')
+    parser.add_argument('--use_geo', action='store_true')
+    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
+    parser.add_argument('--img_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/539178994_18_35.633302_139.882049.jpg')
+    parser.add_argument('--date_time', type=str, default='2012-05-20 08:00:00.0')
+    parser.add_argument('--normalization_type', type=str, default='old')
+
+    args = parser.parse_args()
+    return args
+
 if __name__ == '__main__':
-    image_model = 'clip'
+    args = get_args()
+    image_model = args.model_type
     
-    use_geo = True
-    date_time = '2012-05-20 23:00:00.0'
+    use_geo = args.use_geo
+    date_time = args.date_time
     
     #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt'
     #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/f1dtv48z/checkpoints/step=38750-val_loss=4.976.ckpt'
     #ckpt_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/s212e5he/checkpoints/step=35750-val_loss=4.972.ckpt' the best one so far
-    ckpt_path ='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/epoch=3-step=29500-top_k_score=0.920.ckpt'
-    img_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/247264250_18_57.574548_-4.091806.jpg'
+    #ckpt_path ='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/epoch=3-step=29500-top_k_score=0.920.ckpt'
+    #ckpt_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt'
+    ckpt_path=args.ckpt_path #second best currently using
+    #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/r5tztaac/checkpoints/step=6000-val_loss=6.466.ckpt'
+    img_path =args.img_path
 
-
+    #college = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/172549520_18_51.376448_-2.329659.jpg'
+    #beach(seagulls)='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/247264250_18_57.574548_-4.091806.jpg'
+    #beach_w_rich_neighborhood = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/354187045_18_36.594994_-4.5195.jpg'
+    #japan_disney_world='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/539178994_18_35.633302_139.882049.jpg'
+    #sea facing apartment='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/1072838342_18_40.773001_9.67947.jpg'
+    #
+    
     pretrained_model = 'Conceptual captions'  # @param ['COCO', 'Conceptual captions']
     #clip cap model path
     model_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/pretrained_models/clipcap/conceptual_weights.pt'
@@ -269,7 +292,7 @@ if __name__ == '__main__':
 
     #Inference 
     #@title Inference
-    use_beam_search = True #@param {type:"boolean"}  
+    use_beam_search = False #@param {type:"boolean"}  
 
     # image = io.imread(UPLOADED_FILE)
     # pil_image = PIL.Image.fromarray(image)
@@ -287,7 +310,7 @@ if __name__ == '__main__':
             image = preprocess(pil_image).unsqueeze(0).to(device)
             prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
             norm_prefix = prefix/prefix.norm(p=2,dim=-1)
-            prefixes = [prefix, norm_prefix]
+            prefixes = [norm_prefix, prefix]
         elif image_model == 'geoclip':
             print('Using GeoClip')
             checkpoint = torch.load(ckpt_path)
@@ -303,11 +326,24 @@ if __name__ == '__main__':
             if use_geo:
                 geo_encoder = geoclip_model.geo_encoder.to('cpu')
                 lat, long = path_to_lat(img_path)
-                geo_encoding = get_geo_encode(lat, long, date_time)
-            #  code.interact(local=dict(globals(), **locals()))
-                geo_embeddings = [geo_encoder(geo_encoding).to(device), geo_encoder(geo_encoding).to(device)]
-                imo_embeddings = [embeddings.to(device) for embeddings in imo_encoder(image)]
-                prefixes = [(im_emb+geo_emb) for (im_emb,geo_emb) in zip(imo_embeddings, geo_embeddings)]
+                if normalization_type='new':
+                    geo_encoding = get_geo_encode(lat, long, date_time)
+                #  code.interact(local=dict(globals(), **locals()))
+                    geo_embeddings = geo_encoder(geo_encoding).to(device)
+                    _, unnormalized_imo_embeddings = imo_encoder(image).to(device)
+                    
+                    unnormalized_imo_embeddings = unnormalized_imo_embeddings.to(device)
+                    unnormalized_imo_embeddings = unnormalized_imo_embeddings+geo_embeddings 
+                    normalized_imo_embeddings = unnormalized_imo_embeddings/unnormalized_imo_embeddings.norm(unnormalized_overhead_img_embeddings.norm(p=2, dim=-1, keepdim=True))
+                    
+                    prefixes = [normalized_imo_embeddings, unnormalized_imo_embeddings]
+                else:
+                    geo_encoding = get_geo_encode(lat, long, date_time)
+                #  code.interact(local=dict(globals(), **locals()))
+                    geo_embeddings = [geo_encoder(geo_encoding).to(device), geo_encoder(geo_encoding).to(device)]
+                    imo_embeddings = [embeddings.to(device) for embeddings in imo_encoder(image)]
+                    prefixes = [(im_emb+geo_emb) for (im_emb,geo_emb) in zip(imo_embeddings, geo_embeddings)]
+
             else:
                 prefixes = [embeddings.to(device) for embeddings in imo_encoder(image)]
         
@@ -318,5 +354,5 @@ if __name__ == '__main__':
     else:
         generated_text_prefix = [generate2(model, tokenizer, embed=prefix_embed) for prefix_embed in prefix_embeds]
     
-    print(f'\nUnnormalized: {generated_text_prefix[0]}')
-    print(f'\nNormalized: {generated_text_prefix[1]}')
+    print(f'\nNormalized: {generated_text_prefix[0]}')
+    print(f'\nUnnormalized: {generated_text_prefix[1]}')

@@ -100,10 +100,12 @@ class MultiDataRaw(object):
 if __name__ == '__main__':
     wds_path = '/home/a.dhakal/active/datasets/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar'
     #wds_path = '/scratch1/fs1/jacobsn/a.dhakal/yfc100m/93b7d2ae-0c93-4465-bff8-40e719544440.tar'
-    args = {'vali_path':wds_path, 'val_batch_size':256, 'train_epoch_length':10, 'normalize_embeddings':True}
+    args = {'vali_path':wds_path, 'val_batch_size':32, 'train_epoch_length':10, 'normalize_embeddings':True}
 
     args = Namespace(**args)
-    dataset = MultiData(args).get_ds('test')
+    dataset = MultiDataRaw(args).get_ds('test')
+    sample = next(iter(dataset))
+    img, imo, meta, key = sample
     
     # sample = next(iter(dataset))
     # img, imo, geo_encode, json, key = sample
