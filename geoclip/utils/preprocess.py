@@ -55,15 +55,13 @@ class Preprocess():
             date_str = date_time.split(' ')[0]
             date_obj = datetime.strptime(date_str, '%Y-%m-%d')
         except (IndexError, ValueError) as e:
-            date_str = get_random_date(2000,2015)
-            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+            raise ValueError('Invalid date')
 
         try:
             time_str = date_time.split(' ')[1]
             time_obj = datetime.strptime(time_str, '%H:%M:%S.%f')
         except (IndexError, ValueError) as e:
-            time_str = get_random_time(7,23)
-            time_obj = datetime.strptime(time_str, '%H:%M:%S.%f')
+            raise ValueError('Invalid time')
 
         
         #extract data info
