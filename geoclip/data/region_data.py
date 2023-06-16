@@ -37,3 +37,21 @@ class RegionDataset(Dataset):
         img = PIL.Image.open(image_path)
         processed_image = self.geo_processor.preprocess_overhead([img])[0]
         return processed_image
+
+
+class DynamicDataset(Dataset):
+    def __init__(self, locations, date_time):
+        self.locations = locations
+        self.date_time = date_time
+        self.geo_processor = preprocess.Preprocess()
+    def __len__(self):
+        return len(self.locations)
+
+    def __getitem__(self, idx):
+        lat_lon = self.locations[idx]
+        encoding = self.geo_processor.get_geo_encode(lat_lon[0], lat_lon[1], self.date_time)
+        return encoding
+        
+        
+
+    
