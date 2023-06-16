@@ -23,7 +23,7 @@ import h5py
 # dataloader = DataLoader(dataset, shuffle=False, batch_size=2, num_workers=0)
 # sample = next(iter(dataloader))
 # code.interact(local=dict(globals(), **locals()))
-output_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/netherlands/no_dropout/step=38000-val_loss=4.h5'
+output_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/netherlands/dropout/step=86750-val_loss=4.h5'
 with h5py.File(output_path,'r') as f:
     print(f.keys())
     l = f['location']

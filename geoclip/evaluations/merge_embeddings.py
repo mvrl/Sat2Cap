@@ -8,6 +8,8 @@ import torch
 from torch.utils.data import DataLoader
 from argparse import ArgumentParser
 import os
+from tqdm import tqdm
+
 #local import
 from ..data.region_data import DynamicDataset
 from ..models.geomoco import GeoMoCo 
@@ -17,8 +19,8 @@ from ..utils import utils
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument('--input_file', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957.h5')
-    parser.add_argument('--batch_size', type=int, default=20000)
+    parser.add_argument('--input_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957.h5')
+    parser.add_argument('--batch_size', type=int, default=10000)
     #parser.add_argument('--input_prompt', type=str, default='playing in the sand with family')
     parser.add_argument('--ckpt_path', type=str, default='')
     parser.add_argument('--date_time', type=str, default='2012-05-20 08:00:00.0')
@@ -54,7 +56,7 @@ def ensure_dir(args):
     output_path = f'{output_dir}/dynamic_{model_name}.h5'
 
     if os.path.exists(output_path):
-        raise ValueError('The model already exists')
+        raise ValueError('The given embeddings file already exists')
     else:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -65,7 +67,7 @@ def ensure_dir(args):
 if __name__ == '__main__':
     set_seed(56)
     args = get_args()
-    handle = h5py.File(args.input_file, 'r')
+    handle = h5py.File(args.input_path, 'r')
     print(f'The keys are {handle.keys()}')
     
     overhead_embeddings = handle['overhead_embeddings'][:]
@@ -77,15 +79,19 @@ if __name__ == '__main__':
     if not args.ckpt_path:
         print('Using ckpt path from h5 file')
         args.ckpt_path = handle.attrs['model_path']
-        print(f'Using model {handle.attrs['model_path']}')
+        print(f'Using model {args.ckpt_path}')
+
+    input_region = handle.attrs['input_region']
 
     handle.close()
+
+    args.output_path = ensure_dir(args)
 
     #get the dynamic dataset
     dynamic_dataset = DynamicDataset(locations, args.date_time)
 
     #create dataloader
-    dynamic_dataloader = DataLoader(dynamic_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+    dynamic_dataloader = DataLoader(dynamic_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=16)
 
     #get the geo encoder
     pretrained_model = GeoMoCo.load_from_checkpoint(args.ckpt_path).eval()
@@ -101,19 +107,26 @@ if __name__ == '__main__':
         geo_embeddings = geo_encoder(batch).detach().cpu()
         all_geo_embeddings = torch.cat([all_geo_embeddings, geo_embeddings])
 
-#    code.interact(local=dict(globals(), **locals()))
+    
+    #code.interact(local=dict(globals(), **locals()))
+    all_geo_embeddings = all_geo_embeddings.numpy()
+    
+    assert all_geo_embeddings.shape == overhead_embeddings.shape, "geo embeddings and overhead embeddings must be of same shape"
+
     # compute the unnormalized dynamic embeddings
     dynamic_embeddings = all_geo_embeddings + overhead_embeddings
 
     #store the dynamic embeddings in h5 file
-    with h5py.File(output_path, 'w') as f:
+    with h5py.File(args.output_path, 'w') as f:
         
-        print(f'Creating new h5 file:{output_path}')
-        dset_tensor = f.create_dataset('tensor', shape=dynamic_embedding.shape, dtype=np.float32)
+        print(f'Creating new h5 file:{args.output_path}')
+        dset_tensor = f.create_dataset('dynamic_embeddings', shape=dynamic_embeddings.shape, dtype=np.float32)
         dset_location = f.create_dataset('location', shape=locations.shape, dtype=np.float32)
         
-        dset_location.attrs['input_file_path'] = args.input_file
-        dset_location.attrs['input_region'] = handle['location'] 
+        f.attrs['input_file_path'] = args.input_path
+        f.attrs['input_region'] = input_region
+        f.attrs['date_time'] = args.date_time
+        f.attrs['general'] = 'Unnormalized dynamic embeddings (overhead_embedding+geo_embedding) for the given input_region and date_time'
 
     
 
