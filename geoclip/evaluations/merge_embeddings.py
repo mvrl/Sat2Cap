@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument('--batch_size', type=int, default=10000)
     #parser.add_argument('--input_prompt', type=str, default='playing in the sand with family')
     parser.add_argument('--ckpt_path', type=str, default='')
-    parser.add_argument('--date_time', type=str, default='2012-05-20 08:00:00.0')
+    parser.add_argument('--date_time', type=str, default='2012-12-20 08:00:00.0')
 
     args = parser.parse_args()
     return args
@@ -116,11 +116,16 @@ if __name__ == '__main__':
     # compute the unnormalized dynamic embeddings
     dynamic_embeddings = all_geo_embeddings + overhead_embeddings
 
+    #normalized dynamic embeddings
+    #normalized_dynamic_embeddings = dynamic_embeddings/np.linalg.norm(dynamic_embeddings,axis=-1,keepdims=True, ord=2)
+
+
     #store the dynamic embeddings in h5 file
     with h5py.File(args.output_path, 'w') as f:
         
         print(f'Creating new h5 file:{args.output_path}')
         dset_tensor = f.create_dataset('dynamic_embeddings', shape=dynamic_embeddings.shape, dtype=np.float32)
+        #dset_tensor_normalized = f.create_dataset('normalized_dynamic_embeddings', shape=dynamic_embeddings.shape, dtype=np.float32)
         dset_location = f.create_dataset('location', shape=locations.shape, dtype=np.float32)
         
         f.attrs['input_file_path'] = args.input_path
@@ -128,6 +133,11 @@ if __name__ == '__main__':
         f.attrs['date_time'] = args.date_time
         f.attrs['general'] = 'Unnormalized dynamic embeddings (overhead_embedding+geo_embedding) for the given input_region and date_time'
 
+        dset_tensor[:] = dynamic_embeddings
+        #dset_tensor_normalized[:] = normalized_dynamic_embeddings
+        dset_location[:] = locations
+
+    print(f'New embeddings file created at {args.output_path}')
     
 
     
