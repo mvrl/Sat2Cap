@@ -9,12 +9,12 @@ from PIL import Image
 def get_args():
     parser = ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
     #training hparams
-    parser.add_argument('--overhead_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead')
-    parser.add_argument('--ground_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/ground')
+    parser.add_argument('--overhead_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/overhead_images')
+    parser.add_argument('--ground_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/ground_images')
 
     parser.add_argument('--wds_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
 
-    parser.add_argument('--data_size', type=int, default=512)
+    parser.add_argument('--data_size', type=int, default=1000)
 
     args = parser.parse_args()
     return args
@@ -41,7 +41,8 @@ if __name__ == '__main__':
     for img, imo, json, key in zip(img_old, imo_old, json_old,key_old):
         lat = json['latitude']
         long = json['longitude']
-        img.save(f'{save_path_img}/{key}_{lat}_{long}.jpg')
-        imo.save(f'{save_path_imo}/{key}_{lat}_{long}.jpg')
+        date_time = json['date_taken']
+        img.save(f'{save_path_img}/{key}_{date_time}_{lat}_{long}.jpg')
+        imo.save(f'{save_path_imo}/{key}_{date_time}_{lat}_{long}.jpg')
 
 

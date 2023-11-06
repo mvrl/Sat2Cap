@@ -226,9 +226,33 @@ def generate2(
 def path_to_lat(path):
     img_name = path.split('/')[-1]
     splits = img_name.split('_')
-    lat = splits[2]
-    long = splits[3].replace('.jpg', "")
+    lat = splits[3]
+    long = splits[4].replace('.jpg', "")
     return float(lat), float(long)
+
+def path_to_dt(path, args):
+ 
+    img_name = path.split('/')[-1]
+    splits = img_name.split('_')
+    date_time = splits[2]
+    date,time = date_time.split(' ')
+
+    if not args.time and not args.date:
+        return date_time
+
+    if args.time:
+        time = f'{args.time}:00:00.0'
+        new_date_time = f'{date} {time}'    
+
+    if args.date:
+        date = f'2012-{args.date}-01'
+        new_date_time = f'{date} {time}'
+
+
+    print(time)
+    return new_date_time
+
+
 
 def get_geo_encode(lat,long, date_time='2010-05-05 01:01:53.0'):
     preprocessor = Preprocess()
@@ -241,9 +265,12 @@ def get_args():
     parser.add_argument('--model_type', type=str, default='geoclip')
     parser.add_argument('--use_geo', action='store_true')
     parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
-    parser.add_argument('--img_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/539178994_18_35.633302_139.882049.jpg')
-    parser.add_argument('--date_time', type=str, default='2012-05-20 08:00:00.0')
-    parser.add_argument('--normalization_type', type=str, default='old')
+   # parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/f1dtv48z/checkpoints/step=86750-val_loss=4.100.ckpt')
+    parser.add_argument('--img_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/overhead_images/1046311_18_2004-10-24 13:09:39.0_51.818219_4.671249.jpg')
+    #parser.add_argument('--date_time', type=str, default='2012-08-20 08:00:00.0')
+    parser.add_argument('--time', type=str, default=None)
+    parser.add_argument('--date', type=str, default=None)
+    parser.add_argument('--normalization_type', type=str, default='new')
 
     args = parser.parse_args()
     return args
@@ -253,8 +280,10 @@ if __name__ == '__main__':
     image_model = args.model_type
     
     use_geo = args.use_geo
-    date_time = args.date_time
     
+    #code.interact(local=dict(globals(), **locals()))
+    date_time = path_to_dt(args.img_path, args)
+    print(date_time)
     #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt'
     #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/f1dtv48z/checkpoints/step=38750-val_loss=4.976.ckpt'
     #ckpt_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/s212e5he/checkpoints/step=35750-val_loss=4.972.ckpt' the best one so far
@@ -292,7 +321,7 @@ if __name__ == '__main__':
 
     #Inference 
     #@title Inference
-    use_beam_search = False #@param {type:"boolean"}  
+    use_beam_search = True #@param {type:"boolean"}  
 
     # image = io.imread(UPLOADED_FILE)
     # pil_image = PIL.Image.fromarray(image)
@@ -326,15 +355,15 @@ if __name__ == '__main__':
             if use_geo:
                 geo_encoder = geoclip_model.geo_encoder.to('cpu')
                 lat, long = path_to_lat(img_path)
-                if normalization_type='new':
+                if args.normalization_type=='new':
                     geo_encoding = get_geo_encode(lat, long, date_time)
                 #  code.interact(local=dict(globals(), **locals()))
                     geo_embeddings = geo_encoder(geo_encoding).to(device)
-                    _, unnormalized_imo_embeddings = imo_encoder(image).to(device)
-                    
+                    _, unnormalized_imo_embeddings = imo_encoder(image)
+                    #unnormalized_imo_embeddings = unnormalized_imo_embeddings.to(device)
                     unnormalized_imo_embeddings = unnormalized_imo_embeddings.to(device)
                     unnormalized_imo_embeddings = unnormalized_imo_embeddings+geo_embeddings 
-                    normalized_imo_embeddings = unnormalized_imo_embeddings/unnormalized_imo_embeddings.norm(unnormalized_overhead_img_embeddings.norm(p=2, dim=-1, keepdim=True))
+                    normalized_imo_embeddings = unnormalized_imo_embeddings/unnormalized_imo_embeddings.norm(p=2, dim=-1, keepdim=True)
                     
                     prefixes = [normalized_imo_embeddings, unnormalized_imo_embeddings]
                 else:

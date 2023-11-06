@@ -6,7 +6,7 @@ echo $CUDA_VISIBLE_DEVICES
 
 ###fresh#####
 python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
-    --train_batch_size=100 \
+    --train_batch_size=50 \
     --val_batch_size=100 \
     --wandb_mode=online \
     --wandb_resume=none \
@@ -22,7 +22,7 @@ python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdat
     --val_check_interval=250 \
     --project_name=GeoClip \
     --run_name='geomoco_nodrop_10k' \
-    --vit='32' \
+    --vit='16' \
     --ckpt_path='none' \
     --ckpt_mode='soft' \
     --learning_rate=0.00005 \

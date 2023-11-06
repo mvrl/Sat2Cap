@@ -3,6 +3,8 @@ import numpy as np
 import torch
 import random
 import os
+import h5py
+
 from .preprocess import Preprocess
 
 preprocessor = Preprocess()
@@ -36,3 +38,19 @@ def get_geo_encode(lat,long, date_time='2010-05-05 01:00:00.0'):
 def get_stacked_geoencode(json):
     geo_encoding = torch.stack([preprocessor.preprocess_meta(js) for js in json])
     return geo_encoding
+
+#returns the average distance between embeddings in a given test set
+def get_avg_cosine(input_path):
+    with h5py.File(input_path, 'r') as handle:
+        print(handle.keys())
+        overhead_embeddings = handle['overhead_embeddings'][0:100000]
+        normalized_overhead_embeddings = overhead_embeddings/np.linalg.norm(overhead_embeddings, axis=-1, keepdims=True, ord=2)
+        sim_matrix = normalized_overhead_embeddings @ normalized_overhead_embeddings.T
+
+    return sim_matrix.mean()
+
+if __name__ == '__main__':
+
+    input_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/england/clip/step=86750-val_loss=4.h5'
+    mean = get_avg_cosine(input_path)
+    print(mean)

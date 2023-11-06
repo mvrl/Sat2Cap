@@ -24,20 +24,20 @@ def get_args():
     parser.add_argument('--test_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
     parser.add_argument('--batch_size', type=int, default=3000)
     parser.add_argument('--device', type=str, default='cpu')
-    parser.add_argument('--geoclip_wt', type=float, default=1.0)
     parser.add_argument('--run_topk', action='store_true', default=False)
     parser.add_argument('--save_topk', action='store_true', default=False)
-    parser.add_argument('--k', type=int, default=5)
+    parser.add_argument('--k', type=list, default=[5,10])
     parser.add_argument('--clip', action='store_true', help='Run inference on normal CLIP model')
     parser.add_argument('--geo_encode', action='store_true', default=False)
     parser.add_argument('--date_time', type=str, default='')
     parser.add_argument('--save_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/retrieval_images')
-    parser.add_argument('--evaluation_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/retrieval_results_g2o.txt')
+    parser.add_argument('--evaluation_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/retrieval_results_node.txt')
+    parser.add_argument('--g2o', action='store_true')
     args = parser.parse_args()
     return args
 
 
-def get_retrieval_metric(model, sample, k=5):
+def get_retrieval_metric(model, sample, ks=[5,10], g2o=False):
     
     data_size = len(sample)
     embeddings = model(sample)
@@ -46,10 +46,13 @@ def get_retrieval_metric(model, sample, k=5):
     overhead_img_embeddings = embeddings['overhead_img_embeddings']
     print(f'Size of retrieval data {len(ground_img_embeddings)}')
     keys = embeddings['keys']
+    metric = {}
+    for k in ks:
+        retrieval = Retrieval(k=k)
+        curr_metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings, g2o=g2o)
+        metric[k] = curr_metric
+        median_metric = retrieval.get_median_metric()
     
-    retrieval = Retrieval(k=k)
-    metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings, g2o=True)
-    median_metric = retrieval.get_median_metric()
     return metric, median_metric
 
 
@@ -274,9 +277,10 @@ if __name__ == '__main__':
                 sample = next(iter(val_dataloader))
                 print('Samples Loaded')
                 print('Running topk metric')
-                geoclip_metric, median_metric = get_retrieval_metric(geoclip, sample, args.k)
+                geoclip_metric, median_metric = get_retrieval_metric(geoclip, sample, args.k, args.g2o)
                 
-                print(f'The top-{args.k} metric for geoclip model is {geoclip_metric}')
+                for key,val in geoclip_metric.items():
+                    print(f'The top-{key} metric for geoclip model is {val}')
                 print(f'The median metric for geoclip model is {median_metric}')
                 
                 with open(args.evaluation_dir, 'a') as f:

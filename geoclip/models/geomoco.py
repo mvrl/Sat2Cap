@@ -148,7 +148,7 @@ class GeoMoCo(pl.LightningModule):
         if self.hparams.geo_encode:
             geo_dropout = np.random.uniform(0,1)
             geo_embeddings = self.geo_encoder(geo_encodings)
-            if geo_dropout < 0:
+            if geo_dropout < 0.3:
                 geo_embeddings = geo_embeddings*0
             unnormalized_overhead_img_embeddings = geo_embeddings + unnormalized_overhead_img_embeddings
             overhead_img_embeddings = unnormalized_overhead_img_embeddings/unnormalized_overhead_img_embeddings.norm(p=2, dim=-1, keepdim=True)
@@ -249,11 +249,20 @@ class GeoMoCo(pl.LightningModule):
             print('Skipping Validatiion Epoch End')
             pass
         else:
-            random_batch = np.random.randint(0,len(outputs))
-            validation_embeddings = outputs[random_batch]
-            ground_img_embeddings = validation_embeddings['normalized_ground_img_embeddings']
-            overhead_img_embeddings = validation_embeddings['normalized_overhead_img_embeddings']
-            retrieval = Retrieval(k=self.hparams.top_k)
+            for i, output in enumerate(outputs):
+                curr_ground_img_embeddings = output['normalized_ground_img_embeddings']
+                curr_overhead_img_embeddings = output['normalized_overhead_img_embeddings']
+                if i == 0:
+                    ground_img_embeddings =  curr_ground_img_embeddings
+                    overhead_img_embeddings = curr_overhead_img_embeddings
+                else:
+                    ground_img_embeddings = torch.cat((ground_img_embeddings, curr_ground_img_embeddings), dim=0)
+                    overhead_img_embeddings = torch.cat((overhead_img_embeddings, curr_overhead_img_embeddings), dim=0)
+            # random_batch = np.random.randint(0,len(outputs))
+            # validation_embeddings = outputs[random_batch]
+            # ground_img_embeddings = validation_embeddings['normalized_ground_img_embeddings']
+            # overhead_img_embeddings = validation_embeddings['normalized_overhead_img_embeddings']
+            # retrieval = Retrieval(k=self.hparams.top_k)
             retrieval_metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings)
             self.log(f'top_k_score', retrieval_metric, sync_dist=True, batch_size=self.hparams.val_batch_size, prog_bar=True)
             #print(f'Retrieval Metric on validation set is {retrieval_metric}') 

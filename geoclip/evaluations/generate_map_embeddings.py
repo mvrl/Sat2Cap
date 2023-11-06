@@ -21,6 +21,8 @@ from ..utils.random_seed import set_seed
 from ..multidata import MultiData
 from ..utils.preprocess import Preprocess
 from ..data.region_data import RegionDataset
+#huggingface imports
+from transformers import AutoTokenizer, CLIPTextModelWithProjection
 
 
 
@@ -42,11 +44,12 @@ def get_lat_lon(img_paths):
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
+    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/f1dtv48z/checkpoints/step=86750-val_loss=4.100.ckpt')
     parser.add_argument('--batch_size', type=int, default=540)
-    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/geoembed_embeddings/netherlands/no_dropout')
+    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/netherlands/clip')
     parser.add_argument('--test_dir', type=str, default='/home/a.dhakal/active/proj_smart/BING_IMG/netherland_bing/')
     parser.add_argument('--embedding_size', type=int, default=512)
+    parser.add_argument('--compute_clip', action='store_true')
     #parser.add_argument('--max_size', default=147420)
 
     args = parser.parse_args()
@@ -95,7 +98,13 @@ if __name__ == '__main__':
         f.attrs['general'] = 'Unnormalized Overhead Embeddings without date time loc info'
 
     #load pretrained model
-    pretrained_model = GeoMoCo.load_from_checkpoint(args.ckpt_path).eval()
+    if args.compute_clip:
+        checkpoint = torch.load(args.ckpt_path)
+        hparams = checkpoint['hyper_parameters']
+        hparams['geo_encode'] = False 
+        pretrained_model = GeoMoCo(hparams).eval()
+    else:
+        pretrained_model = GeoMoCo.load_from_checkpoint(args.ckpt_path).eval()
     overhead_encoder = pretrained_model.imo_encoder.eval().to(device)
     for params in overhead_encoder.parameters():
         params.requires_grad=False

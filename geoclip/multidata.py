@@ -11,7 +11,7 @@ import io
 from datetime import datetime
 import random
 import time
-#local imports
+from tqdm import tqdm #local imports
 from .models.clip import Clip
 from .models.geoencode import GeoNet
 
@@ -201,19 +201,22 @@ class MultiData(object):
 if __name__ == '__main__':
     wds_path = '/home/a.dhakal/active/datasets/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar'
     #wds_path = '/scratch1/fs1/jacobsn/a.dhakal/yfc100m/93b7d2ae-0c93-4465-bff8-40e719544440.tar'
-    args = {'vali_path':wds_path, 'val_batch_size':256, 'train_epoch_length':10, 'normalize_embeddings':True}
+    args = {'vali_path':wds_path, 'val_batch_size':100, 'train_epoch_length':1000, 'normalize_embeddings':True}
 
     args = Namespace(**args)
     dataset = MultiData(args).get_ds('test')
     
     # sample = next(iter(dataset))
     # img, imo, geo_encode, json, key = sample
+    trainloader = wds.WebLoader(dataset, batch_size=None,
+                    shuffle=False, pin_memory=True, num_workers=8)
+    dataloader = trainloader.unbatched().shuffle(1000).batched(100)
     tick = time.time()
-    for i, sample in enumerate(dataset):
+    for i, sample in tqdm(enumerate(dataloader)):
         img, imo, geo_encode, json, key = sample
     # code.interact(local=dict(globals(), **locals()))
         print(f'Sample no {i}\n{len(img)}')
-        if i == 20:
+        if i == 100:
             break
     tock = time.time()
     time_taken = tock - tick
