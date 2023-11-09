@@ -275,6 +275,7 @@ def get_args():
     args = parser.parse_args()
     return args
 
+
 if __name__ == '__main__':
     args = get_args()
     image_model = args.model_type
@@ -345,6 +346,7 @@ if __name__ == '__main__':
             checkpoint = torch.load(ckpt_path)
             hparams = checkpoint['hyper_parameters']
             hparams['geo_encode'] = True
+            hparams['inference'] = True
             geoclip_model = GeoMoCo(hparams=hparams).eval().to(device)
             unused_params = geoclip_model.load_state_dict(checkpoint['state_dict'], strict=False)
             print(f'Couldn\'t load {unused_params}')
@@ -376,6 +378,7 @@ if __name__ == '__main__':
             else:
                 prefixes = [embeddings.to(device) for embeddings in imo_encoder(image)]
         
+        code.interact(local=dict(globals(), **locals()))
         prefix_embeds = [model.clip_project(prefix).reshape(1, prefix_length, -1) for prefix in prefixes]
         
     if use_beam_search:

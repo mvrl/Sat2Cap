@@ -122,3 +122,10 @@ python -m geoclip.evaluations.test_retrieval \
  --run_topk \
  --k=10 \
  --clip
+
+
+
+ ####file to model map
+ ##Trained without dropout: /home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt
+ ##Trained with dropout: /home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/f1dtv48z/checkpoints/step=86750-val_loss=4.100.ckpt
+ ##Trained without metadata: /home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt

@@ -75,6 +75,10 @@ class GeoMoCo(pl.LightningModule):
         if self.hparams.geo_encode:
             print('Using location date & time information')
             self.geo_encoder = GeoNet()
+        
+        if self.hparams.inference:
+            print('Running Inferece. Setting Dropout to zero')
+            self.hparams['dropout_rate'] = 0
 
         
         #instantiate the learnable temperature parameter and queue size
@@ -148,7 +152,7 @@ class GeoMoCo(pl.LightningModule):
         if self.hparams.geo_encode:
             geo_dropout = np.random.uniform(0,1)
             geo_embeddings = self.geo_encoder(geo_encodings)
-            if geo_dropout < 0.3:
+            if geo_dropout < self.hparams.dropout_rate:
                 geo_embeddings = geo_embeddings*0
             unnormalized_overhead_img_embeddings = geo_embeddings + unnormalized_overhead_img_embeddings
             overhead_img_embeddings = unnormalized_overhead_img_embeddings/unnormalized_overhead_img_embeddings.norm(p=2, dim=-1, keepdim=True)
