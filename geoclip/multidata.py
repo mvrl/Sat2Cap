@@ -100,7 +100,6 @@ class MultiData(object):
         imo = self.valid_imo_transforms(imo)
         lat = json['latitude']
         long = json['longitude']
-        lat_long_encode = torch.tensor([np.sin(np.pi*lat/90), np.cos(np.pi*lat/90), np.sin(np.pi*long/180), np.cos(np.pi*long/180)])
 
         date_time = json['date_taken']
         try:
@@ -136,7 +135,11 @@ class MultiData(object):
         time_encode = torch.tensor([np.sin(2*np.pi*hour/23), np.cos(2*np.pi*hour/23)])
 
 
-        geo_encode = torch.cat([lat_long_encode, date_encode, time_encode]).to(dtype=torch.float32)
+        if not self.args.spherical_harmonics:    
+            lat_long_encode = torch.tensor([np.sin(np.pi*lat/90), np.cos(np.pi*lat/90), np.sin(np.pi*long/180), np.cos(np.pi*long/180)])
+            geo_encode = torch.cat([lat_long_encode, date_encode, time_encode]).to(dtype=torch.float32)
+        else:
+            geo_encode = torch.cat([torch.tensor([long]), torch.tensor([lat]), date_encode, time_encode]).to(dtype=torch.float32)
         return img, imo,geo_encode,json,key
 
     def do_transforms(self, sample):
@@ -145,7 +148,7 @@ class MultiData(object):
         imo = self.imo_transforms(imo)
         lat = json['latitude']
         long = json['longitude']
-        lat_long_encode = torch.tensor([np.sin(np.pi*lat/90), np.cos(np.pi*lat/90), np.sin(np.pi*long/180), np.cos(np.pi*long/180)])
+        
 
         date_time = json['date_taken']
         try:
@@ -180,8 +183,12 @@ class MultiData(object):
         #time encoding
         time_encode = torch.tensor([np.sin(2*np.pi*hour/23), np.cos(2*np.pi*hour/23)])
 
-
-        geo_encode = torch.cat([lat_long_encode, date_encode, time_encode]).to(dtype=torch.float32)
+        if not self.args.spherical_harmonics:
+            lat_long_encode = torch.tensor([np.sin(np.pi*lat/90), np.cos(np.pi*lat/90), np.sin(np.pi*long/180), np.cos(np.pi*long/180)])
+            geo_encode = torch.cat([lat_long_encode, date_encode, time_encode]).to(dtype=torch.float32)
+        else:
+            geo_encode = torch.cat([torch.tensor([long]), torch.tensor([lat]), date_encode, time_encode]).to(dtype=torch.float32)
+        
         return img, imo,geo_encode,json,key
 
     # def my_jpg_decoder(self, key, value):
@@ -201,7 +208,7 @@ class MultiData(object):
 if __name__ == '__main__':
     wds_path = '/home/a.dhakal/active/datasets/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar'
     #wds_path = '/scratch1/fs1/jacobsn/a.dhakal/yfc100m/93b7d2ae-0c93-4465-bff8-40e719544440.tar'
-    args = {'vali_path':wds_path, 'val_batch_size':100, 'train_epoch_length':1000, 'normalize_embeddings':True}
+    args = {'vali_path':wds_path, 'val_batch_size':16, 'train_epoch_length':1000, 'normalize_embeddings':True, 'spherical_harmonics':False}
 
     args = Namespace(**args)
     dataset = MultiData(args).get_ds('test')
@@ -214,7 +221,7 @@ if __name__ == '__main__':
     tick = time.time()
     for i, sample in tqdm(enumerate(dataloader)):
         img, imo, geo_encode, json, key = sample
-    # code.interact(local=dict(globals(), **locals()))
+        code.interact(local=dict(globals(), **locals()))
         print(f'Sample no {i}\n{len(img)}')
         if i == 100:
             break

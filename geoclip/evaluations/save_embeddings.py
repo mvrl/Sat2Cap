@@ -38,6 +38,7 @@ def get_dataloader(val_batch_size, val_path):
     loader_args = Namespace()
     loader_args.val_batch_size = val_batch_size
     loader_args.vali_path = val_path
+    loader_args.spherical_harmonics = False
     dataset = MultiData(loader_args).get_ds('test')
     return dataset
 
@@ -49,12 +50,12 @@ def get_args():
     parser.add_argument('--val_batch_size', type=int, default=250)
     parser.add_argument('--embedding_size', type=int, default=512)
     parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/cvpr/test_embeddings')
-    parser.add_argument('--normal_clip', type=bool, default=False)
-    parser.add_argument('--use_geoencode', type=bool, default=False)
+    parser.add_argument('--normal_clip', action='store_true', default=False)
+    parser.add_argument('--use_geoencode', action='store_true', default=False)
     parser.add_argument('--output_name', type=str, default='geoclip_w_dropout_train_only')
-    parser.add_argument('--compute_ground', type=bool, default=False)
+    parser.add_argument('--compute_ground', action='store_true', default=False)
     parser.add_argument('--info', type=str, default='GeoCLIP embeddings. Dropout used in training and metadata not used in inference')
-    parser.add_argument('max_size', type=int, default=50000)
+    parser.add_argument('--max_size', type=int, default=50000)
 
     args = parser.parse_args()
     return args
@@ -68,6 +69,8 @@ if __name__ == '__main__':
     hparams['inference'] = True
     hparams['dropout_rate'] = 0
     hparams['geo_encode'] = True
+    hparams['spherical_harmonics']=False
+    
     geoclip_model = GeoMoCo(hparams=hparams).eval().to('cuda')
     for param in geoclip_model.parameters():
         param.requires_grad = False
@@ -146,11 +149,11 @@ if __name__ == '__main__':
 
     
 #test code
-import h5py
-file_1 = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/cvpr/test_embeddings/geoclip_no_dropout_no_meta_in_inference.h5'
-f1 = h5py.File(file_1, 'r')
-loc_1 = f1['location']
+# import h5py
+# file_1 = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/cvpr/test_embeddings/geoclip_no_dropout_no_meta_in_inference.h5'
+# f1 = h5py.File(file_1, 'r')
+# loc_1 = f1['location']
 
-file_2 = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/cvpr/test_embeddings/geoclip_yes_dropout_yes_meta_in_inference.h5'
-f2 = h5py.File(file_2, 'r')
-loc_2 = f2['location']
+# file_2 = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/cvpr/test_embeddings/geoclip_yes_dropout_yes_meta_in_inference.h5'
+# f2 = h5py.File(file_2, 'r')
+# loc_2 = f2['location']

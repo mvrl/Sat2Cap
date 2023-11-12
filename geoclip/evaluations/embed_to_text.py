@@ -46,7 +46,7 @@ def get_args():
     parser.add_argument('--clipcap_model_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/pretrained_models/clipcap/conceptual_weights.pt')
     parser.add_argument('--output_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/cvpr/generated_text')
     parser.add_argument('--batch_size', type=int, default=100)
-    parser.add_argument('--precomputed', type=bool, default=True)
+    parser.add_argument('--precomputed', action='store_true', default=False)
     parser.add_argument('--embeddings_path', type=str, default='')
 
     args = parser.parse_args()
@@ -65,6 +65,7 @@ if __name__ == '__main__':
         ckpt = torch.load(args.ckpt_path)
         hparams = ckpt['hyper_parameters']
         hparams['geo_encode'] = True
+        hparams['spherical_harmonics'] = False
         geoclip_model = GeoMoCo(hparams=hparams).eval().to(args.device)
         for param in geoclip_model.parameters():
             param.requires_grad = False

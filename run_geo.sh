@@ -6,34 +6,37 @@ echo $CUDA_VISIBLE_DEVICES
 
 ###fresh#####
 python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
-    --train_batch_size=50 \
+    --train_batch_size=100 \
     --val_batch_size=100 \
     --wandb_mode=online \
     --wandb_resume=none \
-    --max_epochs=100 \
-    --max_steps=100000 \
+    --max_epochs=10000 \
+    --max_steps=1000000 \
     --accelerator=gpu \
     --devices=1 \
-    --num_workers=4 \
+    --num_workers=8 \
     --project_name=GeoClip \
     --mode=train \
     --train_epoch_length=2000 \
-    --val_epoch_length=300 \
-    --val_check_interval=250 \
+    --val_epoch_length=50 \
+    --val_check_interval=350 \
     --project_name=GeoClip \
-    --run_name='geomoco_geoencode_dropout_14patch' \
-    --vit='16' \
+    --run_name='geomoco_spherical_dropout_0.3' \
+    --vit='32' \
     --ckpt_path='none' \
     --ckpt_mode='soft' \
     --learning_rate=0.00005 \
     --temperature=0.07 \
+    --top_k=10 \
     --strategy='ddp_find_unused_parameters_false' \
     --queue_size=9000 \
     --dim_size=512 \
     --warmup_its=3000 \
     --precision='medium' \
     --moco \
-    --geo_encode
+    --geo_encode \
+    --dropout_rate=0.3 \
+    --spherical_harmonics
 
 
 

@@ -93,7 +93,8 @@ def get_args():
 
     #geoencodings
     parser.add_argument('--geo_encode', action='store_true', default=False)
-    parser.add_argument('dropout_rate', type=float, default=0)
+    parser.add_argument('--dropout_rate', type=float, default=0)
+    parser.add_argument('--spherical_harmonics', action='store_true', default=False)
 
     #metrics hparams
     parser.add_argument('--top_k', type=int, default=5)
@@ -102,7 +103,7 @@ def get_args():
     parser.add_argument('--precision', type=str, default='highest')
 
     #inference mode
-    parser.add_argument('--inference', type=bool, default=False)
+    parser.add_argument('--inference', action='store_true', default=False)
 
 
     args = parser.parse_args()

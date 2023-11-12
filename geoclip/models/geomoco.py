@@ -6,13 +6,13 @@ from transformers import CLIPImageProcessor, CLIPVisionConfig
 from transformers import AutoTokenizer, CLIPTextModelWithProjection
 from tqdm import tqdm
 import numpy as np
-
+import code
 #local imports
 from ..multidata import MultiData
 from ..evaluations.metrics import Retrieval
 from .clip import Clip
 from .temp import temp_layer
-from .geoencode import GeoNet
+from .geoencode import GeoNet, SphericalNet
 
 # utils
 @torch.no_grad()
@@ -74,7 +74,12 @@ class GeoMoCo(pl.LightningModule):
         #instatiate GeoNet
         if self.hparams.geo_encode:
             print('Using location date & time information')
-            self.geo_encoder = GeoNet()
+            if not self.hparams.spherical_harmonics:
+                print('Using sincosine encoding')
+                self.geo_encoder = GeoNet()
+            else:
+                print('Using Spherical Harmonics')
+                self.geo_encoder = SphericalNet()
         
         if self.hparams.inference:
             print('Running Inferece. Setting Dropout to zero')
@@ -151,6 +156,7 @@ class GeoMoCo(pl.LightningModule):
 
         if self.hparams.geo_encode:
             geo_dropout = np.random.uniform(0,1)
+            # code.interact(local=dict(globals(), **locals()))
             geo_embeddings = self.geo_encoder(geo_encodings)
             if geo_dropout < self.hparams.dropout_rate:
                 geo_embeddings = geo_embeddings*0
@@ -266,7 +272,7 @@ class GeoMoCo(pl.LightningModule):
             # validation_embeddings = outputs[random_batch]
             # ground_img_embeddings = validation_embeddings['normalized_ground_img_embeddings']
             # overhead_img_embeddings = validation_embeddings['normalized_overhead_img_embeddings']
-            # retrieval = Retrieval(k=self.hparams.top_k)
+            retrieval = Retrieval(k=self.hparams.top_k)
             retrieval_metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings)
             self.log(f'top_k_score', retrieval_metric, sync_dist=True, batch_size=self.hparams.val_batch_size, prog_bar=True)
             #print(f'Retrieval Metric on validation set is {retrieval_metric}') 

@@ -3,6 +3,9 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import code
+#from ..utils.locationencoder.locationencoder.locationencoder import LocationEncoder
+from .siren import LocationEncoder
+
 
 class GeoNet(nn.Module):
     def __init__(self,fc_dim = 512):
@@ -17,21 +20,57 @@ class GeoNet(nn.Module):
         output = self.fc2(x)
         return output
 
+class SphericalNet(nn.Module):
+    def __init__(self, fc_dim = 512, use_time=True):
+        super().__init__()
+        hparams = dict(
+        legendre_polys=30,
+        dim_hidden=512,
+        num_layers=4,
+        num_classes=fc_dim
+    )
+        self.location_encoder = LocationEncoder('sphericalharmonics', 'siren', hparams)
+        self.time_encoder = TimeNet()
+
+    def forward(self, x):
+       # 
+        lonlat = x[:,:2]
+        date_time = x[:,2:]
+        lonlat_encoding = self.location_encoder(lonlat)
+        date_time_encoding = self.time_encoder(date_time)
+
+        meta_encoding = lonlat_encoding + date_time_encoding
+
+        return meta_encoding
+
 class TimeNet(nn.Module):
     def __init__(self,fc_dim = 512):
         super().__init__()
-        self.fc1 = nn.Linear(2, 256)
-
-        self.fc2 = nn.Linear(256,512)
-
-        self.fc3 = nn.Linear(512,128)
+        self.fc1 = nn.Linear(8, 64)
+        self.fc2 = nn.Linear(64,fc_dim)
        
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        output = F.relu(self.fc3(x))
+        x = self.fc1(x)
+        x = F.relu(x)
+        output = self.fc2(x)
         return output
+
+# class TimeNet(nn.Module):
+#     def __init__(self,fc_dim = 512):
+#         super().__init__()
+#         self.fc1 = nn.Linear(2, 256)
+
+#         self.fc2 = nn.Linear(256,512)
+
+#         self.fc3 = nn.Linear(512,128)
+       
+
+#     def forward(self, x):
+#         x = F.relu(self.fc1(x))
+#         x = F.relu(self.fc2(x))
+#         output = F.relu(self.fc3(x))
+#         return output
 
 class DateNet(nn.Module):
     def __init__(self,fc_dim = 512):
@@ -99,8 +138,13 @@ class ResNetHead(nn.Module):
         return output
 
 
+
+
 if __name__ == '__main__':
-    net = GeoNet(fc_dim=512)
-    x = torch.randn(2,12)
-    print(net(x).shape) #torch.Size([2, fc_dim])
-    
+    # net = GeoNet(fc_dim=512)
+    # x = torch.randn(2,12)
+    # print(net(x).shape) #torch.Size([2, fc_dim])
+    net = SphericalNet()
+    x = torch.randn(2,10)
+    out = net(x)
+    print(out.shape)
