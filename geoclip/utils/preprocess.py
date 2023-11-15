@@ -22,6 +22,7 @@ def get_random_time(start,end):
 class Preprocess():
     def __init__(self):
         self.valid_imo_transforms = transforms.Compose([
+            transforms.CenterCrop((800,800))
             transforms.Resize((224,224)),
             transforms.CenterCrop(size=(224,224)),
             _convert_image_to_rgb,
