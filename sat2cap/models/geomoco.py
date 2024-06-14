@@ -54,14 +54,10 @@ class GeoMoCo(pl.LightningModule):
 
         self.vit_map = {'32':'openai/clip-vit-base-patch32', '16':'openai/clip-vit-base-patch16', '14L':'openai/clip-vit-large-patch14'}
         
-        #this is deprecated in favor of self.save_hyperparameters(hparams)
-        #self.hparams = hparams
-        #todo:modify the img_processor config file for the large overhead images
-        #self.imo_processor = CLIPImageProcessor.from_pretrained('openai/clip-vit-base-patch32')
-
-        #frozen image encoder to get ground level image CLIP embeddings
+        #initialize CLIP image encoder
         self.img_encoder = Clip(self.hparams,'ground_level')
     
+        #freeze CLIP encoder
         if self.hparams.freeze_clip:
             self.img_encoder.eval()
             for params in self.img_encoder.parameters():
@@ -188,9 +184,6 @@ class GeoMoCo(pl.LightningModule):
 
         #Compute temperature
         logit_scale = self.temp_layer.logit_scale.exp()
-        # if logit_scale > 100:
-        #     self.logit_scale = nn.Parameter(torch.tensor([np.log(100)]))
-        #     logit_scale = self.logit_scale.exp()
 
         #Apply temperature
         logits_per_overhead_img = logits*logit_scale # Nx(1+K) Overhead images in batch x Ground images in Queue+1
@@ -204,6 +197,7 @@ class GeoMoCo(pl.LightningModule):
         # dequeue and enqueue
         self._dequeue_and_enqueue(normalized_ground_img_embeddings)
 
+        #this is not used in any of the models in the paper
         if self.hparams.prompt_loss:
             #compute the cross entropy loss between for the text prompt to image similarity between the two modalities
             text_to_ground_sim = torch.matmul(normalized_ground_img_embeddings,self.ground_text_embeddings.t().to('cuda')) # Nx21
@@ -268,18 +262,14 @@ class GeoMoCo(pl.LightningModule):
                 else:
                     ground_img_embeddings = torch.cat((ground_img_embeddings, curr_ground_img_embeddings), dim=0)
                     overhead_img_embeddings = torch.cat((overhead_img_embeddings, curr_overhead_img_embeddings), dim=0)
-            # random_batch = np.random.randint(0,len(outputs))
-            # validation_embeddings = outputs[random_batch]
-            # ground_img_embeddings = validation_embeddings['normalized_ground_img_embeddings']
-            # overhead_img_embeddings = validation_embeddings['normalized_overhead_img_embeddings']
             retrieval = Retrieval(k=self.hparams.top_k)
             retrieval_metric = retrieval.fit_k_similar(overhead_img_embeddings, ground_img_embeddings)
             self.log(f'top_k_score', retrieval_metric, sync_dist=True, batch_size=self.hparams.val_batch_size, prog_bar=True)
             #print(f'Retrieval Metric on validation set is {retrieval_metric}') 
             return {'top_k_score':retrieval_metric}
           
+    #initialize the dataloaders
     def train_dataloader(self):
-
         trainloader = wds.WebLoader(self.trainset, batch_size=None,
                     shuffle=False, pin_memory=True, num_workers=self.hparams.num_workers)
         trainloader = trainloader.unbatched().shuffle(10000).batched(self.hparams.train_batch_size)
@@ -357,7 +347,7 @@ class GeoMoCo(pl.LightningModule):
 
         self.queue_ptr[0] = ptr
 
-    #only used when prompt loss is true
+    #only used when prompt loss is true. Not used in any models mentioned in the paper
     def get_text_stuff(self):
         labels = [
                     'A busy city street lined with skyscrapers',
