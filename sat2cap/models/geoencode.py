@@ -6,7 +6,7 @@ import code
 #from ..utils.locationencoder.locationencoder.locationencoder import LocationEncoder
 from .siren import LocationEncoder
 
-
+#encoder for data and time. We use linear layers for this
 class GeoNet(nn.Module):
     def __init__(self,fc_dim = 512):
         super().__init__()
@@ -20,6 +20,7 @@ class GeoNet(nn.Module):
         output = self.fc2(x)
         return output
 
+#this is the spherical harmonics encoder
 class SphericalNet(nn.Module):
     def __init__(self, fc_dim = 512, use_time=True):
         super().__init__()
@@ -56,21 +57,7 @@ class TimeNet(nn.Module):
         output = self.fc2(x)
         return output
 
-# class TimeNet(nn.Module):
-#     def __init__(self,fc_dim = 512):
-#         super().__init__()
-#         self.fc1 = nn.Linear(2, 256)
 
-#         self.fc2 = nn.Linear(256,512)
-
-#         self.fc3 = nn.Linear(512,128)
-       
-
-#     def forward(self, x):
-#         x = F.relu(self.fc1(x))
-#         x = F.relu(self.fc2(x))
-#         output = F.relu(self.fc3(x))
-#         return output
 
 class DateNet(nn.Module):
     def __init__(self,fc_dim = 512):
