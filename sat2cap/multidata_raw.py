@@ -15,6 +15,9 @@ import time
 from .models.clip import Clip
 from .models.geoencode import GeoNet
 
+
+
+
 def get_random_date(start, end):
     year = random.randint(start, end)
     month = random.randint(1,12)
@@ -30,6 +33,8 @@ def get_random_time(start,end):
 def _convert_image_to_rgb(image):
     return image.convert("RGB")
 
+
+### MultiDataRaw returns raw ground_level, overhead image and metadata without any transformations
 class MultiDataRaw(object):
 
     def __init__(self,args):
@@ -96,27 +101,3 @@ class MultiDataRaw(object):
 
  
 
-
-if __name__ == '__main__':
-    wds_path = '/home/a.dhakal/active/datasets/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar'
-    #wds_path = '/scratch1/fs1/jacobsn/a.dhakal/yfc100m/93b7d2ae-0c93-4465-bff8-40e719544440.tar'
-    args = {'vali_path':wds_path, 'val_batch_size':32, 'train_epoch_length':10, 'normalize_embeddings':True}
-
-    args = Namespace(**args)
-    dataset = MultiDataRaw(args).get_ds('test')
-    sample = next(iter(dataset))
-    img, imo, meta, key = sample
-    
-    # sample = next(iter(dataset))
-    # img, imo, geo_encode, json, key = sample
-    tick = time.time()
-    for i, sample in enumerate(dataset):
-        img, imo, geo_encode, json, key = sample
-    # code.interact(local=dict(globals(), **locals()))
-        print(f'Sample no {i}\n{len(img)}')
-        if i == 20:
-            break
-    tock = time.time()
-    time_taken = tock - tick
-    print(f'The total time taken is {time_taken}')
-    
