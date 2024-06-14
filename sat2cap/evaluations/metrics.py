@@ -9,6 +9,7 @@ import code
 #local import
 #from .geoclip import GeoClip
 
+#computed the topk metrics for the given pair of embeddings
 class Retrieval(object):
     def __init__(self, k):
         self.k = k
