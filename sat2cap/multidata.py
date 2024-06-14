@@ -36,6 +36,7 @@ class MultiData(object):
         self.img_size = 224
         self.args = args
 
+        #set transforms for GL image
         self.img_transforms = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.CenterCrop(size=(224,224)),
@@ -44,6 +45,7 @@ class MultiData(object):
             transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
         ])
 
+        #set transforms for overhead image
         self.imo_transforms = transforms.Compose([
             transforms.RandomResizedCrop(size=(224,224), interpolation=transforms.InterpolationMode.BICUBIC),
             transforms.RandAugment(num_ops=3, interpolation=transforms.InterpolationMode.BICUBIC),
@@ -60,6 +62,7 @@ class MultiData(object):
             transforms.Normalize((0.3670, 0.3827, 0.3338), (0.2209, 0.1975, 0.1988))
         ])
 
+        # set transforms for validation
         self.valid_img_transforms = transforms.Compose([
             transforms.Resize((224,224)),
             transforms.CenterCrop(size=(224,224)),
@@ -76,8 +79,7 @@ class MultiData(object):
             transforms.Normalize((0.3670, 0.3827, 0.3338), (0.2209, 0.1975, 0.1988))
         ])
 
-        #random dates and time
-
+    #initialize the webdataset
     def get_ds(self,mode):
         print(f'\nInitializing {mode} dataset')
         if mode=='train':
@@ -151,6 +153,7 @@ class MultiData(object):
         
 
         date_time = json['date_taken']
+        #incase date_time corrupt, select a random date
         try:
             date_str = date_time.split(' ')[0]
             date_obj = datetime.strptime(date_str, '%Y-%m-%d')
@@ -183,6 +186,7 @@ class MultiData(object):
         #time encoding
         time_encode = torch.tensor([np.sin(2*np.pi*hour/23), np.cos(2*np.pi*hour/23)])
 
+        #use spherical harmonics encoding.
         if not self.args.spherical_harmonics:
             lat_long_encode = torch.tensor([np.sin(np.pi*lat/90), np.cos(np.pi*lat/90), np.sin(np.pi*long/180), np.cos(np.pi*long/180)])
             geo_encode = torch.cat([lat_long_encode, date_encode, time_encode]).to(dtype=torch.float32)
@@ -191,53 +195,4 @@ class MultiData(object):
         
         return img, imo,geo_encode,json,key
 
-    # def my_jpg_decoder(self, key, value):
-    #     if not key.endswith(".jpg"):
-    #         return None
-    #     try:
-    #         with io.BytesIO(value) as stream:
-    #             img = Image.open(stream)
-    #             img.load()
-    #             img = img.convert("RGB")
-            
-    #     except:
-    #         img = None
-    #     return img 
-
-
-if __name__ == '__main__':
-    wds_path = '/home/a.dhakal/active/datasets/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar'
-    #wds_path = '/scratch1/fs1/jacobsn/a.dhakal/yfc100m/93b7d2ae-0c93-4465-bff8-40e719544440.tar'
-    args = {'vali_path':wds_path, 'val_batch_size':16, 'train_epoch_length':1000, 'normalize_embeddings':True, 'spherical_harmonics':False}
-
-    args = Namespace(**args)
-    dataset = MultiData(args).get_ds('test')
-    
-    # sample = next(iter(dataset))
-    # img, imo, geo_encode, json, key = sample
-    trainloader = wds.WebLoader(dataset, batch_size=None,
-                    shuffle=False, pin_memory=True, num_workers=8)
-    dataloader = trainloader.unbatched().shuffle(1000).batched(100)
-    tick = time.time()
-    for i, sample in tqdm(enumerate(dataloader)):
-        img, imo, geo_encode, json, key = sample
-        code.interact(local=dict(globals(), **locals()))
-        print(f'Sample no {i}\n{len(img)}')
-        if i == 100:
-            break
-    tock = time.time()
-    time_taken = tock - tick
-    print(f'The total time taken is {time_taken}')
-    
-    # ov1 = imo[0]
-    # gr1 = img[0]
-    #import code; code.interact(local=dict(globals(), **locals()))
-
-
-            
-    # clip_overhead = Clip(args,'overhead')
-    # clip_ground = Clip(args,'ground_level')
-
-   
-# /scratch1/fs1/jacobsn/a.dhakal/yfc100m/93b7d2ae-0c93-4465-bff8-40e719544440.tar
 
