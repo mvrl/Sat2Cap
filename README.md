@@ -1,8 +1,9 @@
 # Sat2Cap: Mapping Fine-grained Text Descriptions from Satellite Images
 <div align="center">
-<img src="./rgb_map.jpg" width="700" height="500">
+<img src="sat2cap/Local_prompts_v5b.jpg" width="1000" height="500">
   
-[![arXiv](https://img.shields.io/badge/arXiv-2404.06637-red?style=flat&label=arXiv)](https://arxiv.org/abs/2307.15904) </center>
+[![arXiv](https://img.shields.io/badge/arXiv-2307.15904-red)](https://arxiv.org/abs/2307.15904) </center>
+[![Project Page](https://img.shields.io/badge/Project-Website-green)]()
 
 [Aayush Dhakal*](https://scholar.google.com/citations?user=KawjT_8AAAAJ&hl=en),
 [Adeel Ahmad](https://adealgis.wixsite.com/adeel-ahmad-geog)
@@ -10,7 +11,22 @@
 [Srikumar Sastry](https://sites.wustl.edu/srikumarsastry/),
 [Hannah Kerner](https://hannah-rae.github.io/)
 [Nathan Jacobs](https://jacobsn.github.io/)
+</div>
+
+The repository is the official implementation of [Sat2Cap](https://openaccess.thecvf.com/content/CVPR2024W/EarthVision/html/Dhakal_Sat2Cap_Mapping_Fine-Grained_Textual_Descriptions_from_Satellite_Images_CVPRW_2024_paper.html)  [CVPRW, EarthVision 2024, Best Paper Award].
+Sat2Cap model solves the mapping problem in a zero-shot approach. Instead of predicting pre-defined attributes for a satellite image, Sat2Cap attempts to learn the
+text associated with a given location. 
+
+## 🏋️‍♀️ Training
+You can use the `run_geo.sh` script to train the Sat2Cap model. All the necessary hyperparameters can be set in the bash script.
+
+## 🔮 Inference
+Once you have the trained model use the `generate_map_embedding.py` file under evaluations to generate Sat2Cap embeddings for all images of interest. 
+Use `merge_embeddings.py` to add temporal input to the generated embeddings. 
+
 ## 📑 Citation
+
+## 
 
 ```bibtex
 @inproceedings{dhakal2024sat2cap,
