@@ -17,6 +17,10 @@ from ..utils.preprocess import Preprocess
 from ..utils.random_seed import set_seed
 from ..utils import utils
 
+## This script should be used after generate_map_embeddings.py. This script allows you to add
+## the dynamic part to our embeddings. You can specify the date and time and you will get resulting
+## temporally dependent embeddings saved in the output directory
+
 def get_args():
     parser = ArgumentParser()
     parser.add_argument('--input_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957.h5')
