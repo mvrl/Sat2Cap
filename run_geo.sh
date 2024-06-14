@@ -5,7 +5,7 @@ echo $CUDA_VISIBLE_DEVICES
 
 
 ###fresh#####
-python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdataset \
+python -m geoclip.fit --data_path=/path/to/webdataset \
     --train_batch_size=100 \
     --val_batch_size=100 \
     --wandb_mode=online \
@@ -20,8 +20,8 @@ python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdat
     --train_epoch_length=2000 \
     --val_epoch_length=50 \
     --val_check_interval=350 \
-    --project_name=GeoClip \
-    --run_name='geomoco_spherical_dropout_0.3' \
+    --project_name=Sat2Cap \
+    --run_name='test_run' \
     --vit='32' \
     --ckpt_path='none' \
     --ckpt_mode='soft' \
@@ -36,7 +36,7 @@ python -m geoclip.fit --data_path=/home/a.dhakal/active/datasets/YFCC100m/webdat
     --moco \
     --geo_encode \
     --dropout_rate=0.3 \
-    --spherical_harmonics
+
 
 
 
