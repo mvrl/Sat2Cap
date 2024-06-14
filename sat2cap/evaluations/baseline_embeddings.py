@@ -17,11 +17,11 @@ from ..multidata import MultiData
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/base_model/CLIP_32B.pt')
+    parser.add_argument('--ckpt_path', type=str, default='root_path/logs/GeoClip/base_model/CLIP_32B.pt')
     parser.add_argument('--batch_size', type=int, default=500)
-    parser.add_argument('--geoclip_embed_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/geoclip_embeddings/*.h5')
-    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/clip_embeddings')
-    parser.add_argument('--test_dir', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/')
+    parser.add_argument('--geoclip_embed_dir', type=str, default='root_path/logs/evaluations/geoclip_embeddings/*.h5')
+    parser.add_argument('--output_dir', type=str, default='root_path/logs/evaluations/clip_embeddings')
+    parser.add_argument('--test_dir', type=str, default='data_dir/YFCC100m/webdataset/')
     parser.add_argument('--embedding_size', type=int, default=512)
     parser.add_argument('--max_size', default=None)
 

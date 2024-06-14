@@ -18,7 +18,7 @@ from .models.geoclip import GeoClip
 
 
 
-def get_shards(data_path='/home/a.dhakal/active/datasets/YFCC100m/webdataset'):
+def get_shards(data_path='data_dir/YFCC100m/webdataset'):
     all_shards = os.listdir(data_path)
     test_shards = ['9f248448-1d13-43cb-a336-a7d92bc5359e.tar','206faf6d-e5f4-428e-b27c-4a55746d5629.tar']
     fill_shards = ['1ae82f9a-5cf7-4430-bb9b-00f41d2bc9c3.tar']
@@ -74,12 +74,12 @@ def get_args():
     parser.add_argument('--warmup_its', type=int, default=9000)
 
     #data hparams
-    parser.add_argument('--data_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset')
+    parser.add_argument('--data_path', type=str, default='data_dir/YFCC100m/webdataset')
     parser.add_argument('--input_size', type=int, default=800)
 
     #logging hparams
-    parser.add_argument('--log_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs')
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/or5comrl/checkpoints/epoch=22-step=16215.ckpt')
+    parser.add_argument('--log_dir', type=str, default='root_path/logs')
+    parser.add_argument('--ckpt_path', type=str, default='root_path/logs/GeoClip/or5comrl/checkpoints/epoch=22-step=16215.ckpt')
     parser.add_argument('--ckpt_mode', type=str, default='hard')
     parser.add_argument('--project_name', type=str, default='GeoClip')
     parser.add_argument('--run_name', type=str, default='geoclip_large')

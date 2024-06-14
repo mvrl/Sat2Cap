@@ -23,7 +23,7 @@ from ..utils import utils
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument('--input_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957.h5')
+    parser.add_argument('--input_path', type=str, default='root_path/logs/geoclip_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957.h5')
     parser.add_argument('--batch_size', type=int, default=10000)
     #parser.add_argument('--input_prompt', type=str, default='playing in the sand with family')
     parser.add_argument('--ckpt_path', type=str, default='')

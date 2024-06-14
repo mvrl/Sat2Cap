@@ -30,6 +30,6 @@ def generate_map(input_path, output_path):
 
 if __name__ == '__main__':
     print('In')
-    input_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/pca_visualizations/pca_results.csv'
-    output_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/pca_visualizations/data.jpeg'
+    input_path = 'root_path/logs/evaluations/pca_visualizations/pca_results.csv'
+    output_path = 'root_path/logs/evaluations/pca_visualizations/data.jpeg'
     generate_map(input_path, output_path)

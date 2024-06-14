@@ -7,7 +7,7 @@ import torch
 from tqdm import tqdm
 
 if __name__ == '__main__':
-    input_file = '/home/a.dhakal/active/datasets/YFCC100m/webdataset/c4ce82ef-a7dd-499e-8421-82d2e781cd07.tar'
+    input_file = 'data_dir/YFCC100m/webdataset/c4ce82ef-a7dd-499e-8421-82d2e781cd07.tar'
     batch_size=512
     
     total_sum = torch.tensor([0.0, 0.0, 0.0])
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     total_var  = (total_sum_square / count) - (total_mean ** 2)
     total_std  = torch.sqrt(total_var)    
 
-    output_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/geoclip_embeddings/data_params.txt'
+    output_path = 'root_path/logs/evaluations/geoclip_embeddings/data_params.txt'
     print(f'Mean: {total_mean}\nStd: {total_std}')
     with open(output_path, 'w') as f:
         f.write(f'Mean: {total_mean}\nStd: {total_std}')

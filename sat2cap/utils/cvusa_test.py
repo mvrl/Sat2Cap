@@ -10,7 +10,7 @@ import json
 import code
 from itertools import islice
 
-ds = wds.WebDataset("/home/a.dhakal/active/datasets/CVUSA/ted_subset/streetview.tar.gz")
+ds = wds.WebDataset("data_dir/CVUSA/ted_subset/streetview.tar.gz")
 
 sample = next(iter(ds))
 print(sample.keys())

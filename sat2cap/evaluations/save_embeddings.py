@@ -45,11 +45,11 @@ def get_dataloader(val_batch_size, val_path):
 def get_args():
     parser = ArgumentParser(description='arguments for generating test data embeddings')
 
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
-    parser.add_argument('--val_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
+    parser.add_argument('--ckpt_path', type=str, default='root_path/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
+    parser.add_argument('--val_path', type=str, default='data_dir/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
     parser.add_argument('--val_batch_size', type=int, default=250)
     parser.add_argument('--embedding_size', type=int, default=512)
-    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/cvpr/test_embeddings')
+    parser.add_argument('--output_dir', type=str, default='root_path/logs/evaluations/cvpr/test_embeddings')
     parser.add_argument('--normal_clip', action='store_true', default=False)
     parser.add_argument('--use_geoencode', action='store_true', default=False)
     parser.add_argument('--output_name', type=str, default='geoclip_w_dropout_train_only')
@@ -150,10 +150,10 @@ if __name__ == '__main__':
     
 #test code
 # import h5py
-# file_1 = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/cvpr/test_embeddings/geoclip_no_dropout_no_meta_in_inference.h5'
+# file_1 = 'root_path/logs/evaluations/cvpr/test_embeddings/geoclip_no_dropout_no_meta_in_inference.h5'
 # f1 = h5py.File(file_1, 'r')
 # loc_1 = f1['location']
 
-# file_2 = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/cvpr/test_embeddings/geoclip_yes_dropout_yes_meta_in_inference.h5'
+# file_2 = 'root_path/logs/evaluations/cvpr/test_embeddings/geoclip_yes_dropout_yes_meta_in_inference.h5'
 # f2 = h5py.File(file_2, 'r')
 # loc_2 = f2['location']

@@ -109,7 +109,7 @@ def get_args():
     parser.add_argument('--train_size', type=float, default=0.3)
     parser.add_argument('--dataset_name', type=str, default='resisc')
     parser.add_argument('--model_status', type=str, default='clip')
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/rmlo6lic/checkpoints/step=35500-val_loss=5.013.ckpt')
+    parser.add_argument('--ckpt_path', type=str, default='root_path/logs/GeoClip/rmlo6lic/checkpoints/step=35500-val_loss=5.013.ckpt')
     #trainer hparams
     parser.add_argument('--batch_size', type=str, default=64)
     parser.add_argument('--num_workers', type=int, default=3)
@@ -120,7 +120,7 @@ def get_args():
     parser.add_argument('--mode', type=str, default='dev')
 
     #wandb hparams
-    parser.add_argument('--log_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs')
+    parser.add_argument('--log_dir', type=str, default='root_path/logs')
     parser.add_argument('--project_name', type=str, default='SupervisedEval')
     parser.add_argument('--run_name', type=str, default='first_attempt')
     parser.add_argument('--wandb_mode', type=str, default='online')
@@ -131,7 +131,7 @@ def get_args():
     parser.add_argument('--warmup_epochs', type=int, default=10)
 
     #test hparams
-    parser.add_argument('--classification_ckpt', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/SupervisedEval/xs6lkjwo/checkpoints/epoch=92-step=109833-val_acc=0.889.ckpt')
+    parser.add_argument('--classification_ckpt', type=str, default='root_path/logs/SupervisedEval/xs6lkjwo/checkpoints/epoch=92-step=109833-val_acc=0.889.ckpt')
     
 
     args = parser.parse_args()

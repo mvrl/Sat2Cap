@@ -6,7 +6,7 @@ import glob
 import pandas as pd
 
 def random_feature_viz(feats, locs):
-    out_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/pca_visualizations'
+    out_path = 'root_path/logs/evaluations/pca_visualizations'
     idx = 10
     samp = np.random.randint(0, locs.shape[0]-1, 1000)
     plt.scatter(locs[samp,1], locs[samp,0], c=feats[samp,idx])
@@ -20,7 +20,7 @@ def generate_df(feats, locs):
 
 def pca_viz(feats, locs, get_df=True):
     # PCA
-    out_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/pca_visualizations'
+    out_path = 'root_path/logs/evaluations/pca_visualizations'
     feats_cent = feats - feats.mean(axis=0, keepdims=True)
     [U, S, Vh] = np.linalg.svd(feats_cent.T @ feats_cent, compute_uv=True);
     feats_vis = feats_cent@U[:,:3];
@@ -46,7 +46,7 @@ def pca_viz(feats, locs, get_df=True):
 
 if __name__ == '__main__':
     
-    files = glob.glob('/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/clip_embeddings/*.h5')
+    files = glob.glob('root_path/logs/evaluations/clip_embeddings/*.h5')
     for i,file in enumerate(files):
         try:
             handle = h5py.File(file, 'r')

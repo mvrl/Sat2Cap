@@ -264,9 +264,9 @@ def get_args():
     parser = ArgumentParser()
     parser.add_argument('--model_type', type=str, default='geoclip')
     parser.add_argument('--use_geo', action='store_true')
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
-   # parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/f1dtv48z/checkpoints/step=86750-val_loss=4.100.ckpt')
-    parser.add_argument('--img_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/overhead_images/1046311_18_2004-10-24 13:09:39.0_51.818219_4.671249.jpg')
+    parser.add_argument('--ckpt_path', type=str, default='root_path/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
+   # parser.add_argument('--ckpt_path', type=str, default='root_path/logs/GeoClip/f1dtv48z/checkpoints/step=86750-val_loss=4.100.ckpt')
+    parser.add_argument('--img_path', type=str, default='root_path/logs/evaluations/wacv/overhead_images/1046311_18_2004-10-24 13:09:39.0_51.818219_4.671249.jpg')
     #parser.add_argument('--date_time', type=str, default='2012-08-20 08:00:00.0')
     parser.add_argument('--time', type=str, default=None)
     parser.add_argument('--date', type=str, default=None)
@@ -285,25 +285,25 @@ if __name__ == '__main__':
     #code.interact(local=dict(globals(), **locals()))
     date_time = path_to_dt(args.img_path, args)
     print(date_time)
-    #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt'
-    #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/f1dtv48z/checkpoints/step=38750-val_loss=4.976.ckpt'
-    #ckpt_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/s212e5he/checkpoints/step=35750-val_loss=4.972.ckpt' the best one so far
-    #ckpt_path ='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/epoch=3-step=29500-top_k_score=0.920.ckpt'
-    #ckpt_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt'
+    #ckpt_path='root_path/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt'
+    #ckpt_path='root_path/logs/temp_models/f1dtv48z/checkpoints/step=38750-val_loss=4.976.ckpt'
+    #ckpt_path = 'root_path/logs/GeoClip/s212e5he/checkpoints/step=35750-val_loss=4.972.ckpt' the best one so far
+    #ckpt_path ='root_path/logs/temp_models/s212e5he/checkpoints/epoch=3-step=29500-top_k_score=0.920.ckpt'
+    #ckpt_path = 'root_path/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt'
     ckpt_path=args.ckpt_path #second best currently using
-    #ckpt_path='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/r5tztaac/checkpoints/step=6000-val_loss=6.466.ckpt'
+    #ckpt_path='root_path/logs/GeoClip/r5tztaac/checkpoints/step=6000-val_loss=6.466.ckpt'
     img_path =args.img_path
 
-    #college = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/172549520_18_51.376448_-2.329659.jpg'
-    #beach(seagulls)='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/247264250_18_57.574548_-4.091806.jpg'
-    #beach_w_rich_neighborhood = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/354187045_18_36.594994_-4.5195.jpg'
-    #japan_disney_world='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/539178994_18_35.633302_139.882049.jpg'
-    #sea facing apartment='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/test_images/overhead/1072838342_18_40.773001_9.67947.jpg'
+    #college = 'root_path/logs/evaluations/wacv/test_images/overhead/172549520_18_51.376448_-2.329659.jpg'
+    #beach(seagulls)='root_path/logs/evaluations/wacv/test_images/overhead/247264250_18_57.574548_-4.091806.jpg'
+    #beach_w_rich_neighborhood = 'root_path/logs/evaluations/wacv/test_images/overhead/354187045_18_36.594994_-4.5195.jpg'
+    #japan_disney_world='root_path/logs/evaluations/wacv/test_images/overhead/539178994_18_35.633302_139.882049.jpg'
+    #sea facing apartment='root_path/logs/evaluations/wacv/test_images/overhead/1072838342_18_40.773001_9.67947.jpg'
     #
     
     pretrained_model = 'Conceptual captions'  # @param ['COCO', 'Conceptual captions']
     #clip cap model path
-    model_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/pretrained_models/clipcap/conceptual_weights.pt'
+    model_path = 'root_path/pretrained_models/clipcap/conceptual_weights.pt'
 
     is_gpu = True
 

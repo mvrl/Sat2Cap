@@ -21,7 +21,7 @@ def de_norm(x,normalization):
     z = z + torch.tensor(mean).view(3, 1, 1)
     return z
 
-wds_path = '/home/a.dhakal/active/datasets/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar'
+wds_path = 'data_dir/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar'
     #wds_path = '/scratch1/fs1/jacobsn/a.dhakal/yfc100m/93b7d2ae-0c93-4465-bff8-40e719544440.tar'
 args = {'vali_path':wds_path, 'val_batch_size':256, 'train_epoch_length':10, 'normalize_embeddings':True}
 
@@ -36,4 +36,4 @@ imo_raw = [topil(de_norm(im, imo_normalize)) for im in imo]
 #code.interact(local=dict(globals(), **locals()))
 
 for i,im in enumerate(imo_raw):
-    im.save(f'/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/junk/{i}.jpg')
+    im.save(f'root_path/logs/evaluations/wacv/junk/{i}.jpg')

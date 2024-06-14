@@ -5,8 +5,8 @@ import code
 #local import
 from ..geoclip import GeoClip
 if __name__ == '__main__':
-    ckpt_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/st07vzqb/checkpoints/epoch=0-step=2500-top_k_score=0.820.ckpt'
-    out_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/base_model/CLIP_32B.pt'
+    ckpt_path = 'root_path/logs/GeoClip/st07vzqb/checkpoints/epoch=0-step=2500-top_k_score=0.820.ckpt'
+    out_path = 'root_path/logs/GeoClip/base_model/CLIP_32B.pt'
     pretrained_ckpt = torch.load(ckpt_path)
     pretrained_hparams = pretrained_ckpt['hyper_parameters']
     #code.interact(local=dict(globals(), **locals()))

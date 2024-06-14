@@ -36,11 +36,11 @@ def get_dataloader(val_batch_size, val_path):
 def get_args():
     parser = ArgumentParser(description='arguments for generating test data embeddings')
 
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/f1dtv48z/checkpoints/step=86750-val_loss=4.100.ckpt')
-    parser.add_argument('--val_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
+    parser.add_argument('--ckpt_path', type=str, default='root_path/logs/GeoClip/f1dtv48z/checkpoints/step=86750-val_loss=4.100.ckpt')
+    parser.add_argument('--val_path', type=str, default='data_dir/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
     parser.add_argument('--val_batch_size', type=int, default=256)
     parser.add_argument('--embedding_size', type=int, default=512)
-    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/test_set')
+    parser.add_argument('--output_dir', type=str, default='root_path/logs/geoclip_embeddings/test_set')
     args = parser.parse_args()
     return args
 

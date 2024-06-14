@@ -32,10 +32,10 @@ class TextSim():
 def get_args():
     parser = ArgumentParser(description='arguments for runnning retrieval metrics', formatter_class=RawTextHelpFormatter)
 
-    #parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt')
-    #parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/f1dtv48z/checkpoints/step=71250-val_loss=4.357.ckpt')
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
-    parser.add_argument('--test_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
+    #parser.add_argument('--ckpt_path', type=str, default='root_path/logs/GeoClip/u3oyk5ft/checkpoints/step=8600-val_loss=5.672.ckpt')
+    #parser.add_argument('--ckpt_path', type=str, default='root_path/logs/temp_models/f1dtv48z/checkpoints/step=71250-val_loss=4.357.ckpt')
+    parser.add_argument('--ckpt_path', type=str, default='root_path/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
+    parser.add_argument('--test_path', type=str, default='data_dir/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
     parser.add_argument('--batch_size', type=int, default=3000)
     parser.add_argument('--device', type=str, default='cpu')
     parser.add_argument('--save_topk', action='store_true', default=False)
@@ -44,7 +44,7 @@ def get_args():
     parser.add_argument('--input_prompt', type=str, default='a photo of people playing soccer')
     parser.add_argument('--geo_encode', action='store_true', default=False)
     parser.add_argument('--date_time', type=str, default='')
-    parser.add_argument('--save_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/text_retrieval')
+    parser.add_argument('--save_path', type=str, default='root_path/logs/evaluations/wacv/text_retrieval')
     parser.add_argument('--use_clip', type=bool, default=False)
     #parser.add_argument('--g2o', action='store_true')
     args = parser.parse_args()
@@ -148,7 +148,7 @@ def save_top_k(model, batch,args, k=5):
             
     r = np.random.randint(0,10000)
     overhead_img_grid.save(f'{args.save_path}/{args.use_clip}_{args.input_prompt}.jpg')
-        #ground_img_grid.save(f'/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/retrieval_images/ground_lat_{curr_lat}_long_{curr_long}_{r}.jpg')
+        #ground_img_grid.save(f'root_path/logs/evaluations/wacv/retrieval_images/ground_lat_{curr_lat}_long_{curr_long}_{r}.jpg')
         # for j, idx in enumerate(top_ground_indices):
         #     ground_img = sample['ground_images'][idx]
         #     ground_emb = embeddings['ground_img_embeddings'][idx].to('cpu').numpy()

@@ -9,10 +9,10 @@ from PIL import Image
 def get_args():
     parser = ArgumentParser(description='', formatter_class=RawTextHelpFormatter)
     #training hparams
-    parser.add_argument('--overhead_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/overhead_images')
-    parser.add_argument('--ground_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/ground_images')
+    parser.add_argument('--overhead_path', type=str, default='root_path/logs/evaluations/wacv/overhead_images')
+    parser.add_argument('--ground_path', type=str, default='root_path/logs/evaluations/wacv/ground_images')
 
-    parser.add_argument('--wds_path', type=str, default='/home/a.dhakal/active/datasets/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
+    parser.add_argument('--wds_path', type=str, default='data_dir/YFCC100m/webdataset/9f248448-1d13-43cb-a336-a7d92bc5359e.tar')
 
     parser.add_argument('--data_size', type=int, default=1000)
 

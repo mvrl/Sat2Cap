@@ -9,7 +9,7 @@ from skimage.transform import resize
 import json
 import code
 
-ds = wds.WebDataset("/home/a.dhakal/active/datasets/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar")
+ds = wds.WebDataset("data_dir/YFCC100m/webdataset/0a912f85-6367-4df4-aafe-b48e6e1d2be4.tar")
 ds = ds.shuffle(1000)
 ds = ds.decode("rgb")
 #ds = ds.to_tuple("groundlevel.jpg", "overhead.jpg", "metadata.json")

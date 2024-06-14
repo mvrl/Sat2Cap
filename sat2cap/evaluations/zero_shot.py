@@ -141,7 +141,7 @@ def get_args():
     #parser.add_argument('--dataset_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/datasets/RESISC45/NWPU-RESISC45')
     parser.add_argument('--batch_size', type=str, default=64)
     parser.add_argument('--train_size', type=float, default=0.5)
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/st07vzqb/checkpoints/epoch=0-step=2500-top_k_score=0.820.ckpt')
+    parser.add_argument('--ckpt_path', type=str, default='root_path/logs/GeoClip/st07vzqb/checkpoints/epoch=0-step=2500-top_k_score=0.820.ckpt')
     parser.add_argument('--do_baseline', action='store_true', default=False)
     parser.add_argument('--do_interpolate', action='store_true', default=False)
     parser.add_argument('--geoclip_wt', type=float, default=0.5)
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     queries = list(prompted_mapping.values())
     args.queries = queries
 
-    evaluation_dir = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/zero_shot_results.txt'
+    evaluation_dir = 'root_path/logs/evaluations/zero_shot_results.txt'
     #alphas = [i/10 for i in range(0,11)]
     alphas=[1]           
     with open(evaluation_dir, 'a') as f:

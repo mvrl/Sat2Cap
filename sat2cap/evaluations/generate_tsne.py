@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import code
 
 
-# clip_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/clip_embeddings/3fc3d5d7-d373-455f-8430-334217190f1c.h5'
-# geoclip_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/geoembed_embeddings/epoch=3-step=29500/3fc3d5d7-d373-455f-8430-334217190f1c.h5'
+# clip_path = 'root_path/logs/evaluations/clip_embeddings/3fc3d5d7-d373-455f-8430-334217190f1c.h5'
+# geoclip_path = 'root_path/logs/evaluations/wacv/geoembed_embeddings/epoch=3-step=29500/3fc3d5d7-d373-455f-8430-334217190f1c.h5'
 # file_path = clip_path  # Replace with the actual path to your .h5 file
 # with h5py.File(file_path, 'r') as file:
 #     locations = file['location'][:]
@@ -22,11 +22,11 @@ import code
 # plt.title('t-SNE Plot of Embeddings')
 # plt.xlabel('Dimension 1')
 # plt.ylabel('Dimension 2')
-# plt.savefig('/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/tsne/cosine_tsne_clip.jpg')
+# plt.savefig('root_path/logs/evaluations/wacv/tsne/cosine_tsne_clip.jpg')
 
 #code.interact(local=dict(globals(), **locals()))
 if __name__ == '__main__':
-    input_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/test_set/test_embeddings.h5'
+    input_path = 'root_path/logs/geoclip_embeddings/test_set/test_embeddings.h5'
     handle = h5.File(input_path, 'r')         
   #  code.interact(local=dict(globals(), **locals()))
     overhead_geoclip_embeddings = handle['overhead_geoclip_embeddings'][:10000]
@@ -50,6 +50,6 @@ if __name__ == '__main__':
     plt.title('t-SNE Visualization of CLIP Embeddings')
     plt.xlabel('t-SNE Dimension 1')
     plt.ylabel('t-SNE Dimension 2')
-    plt.savefig('/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/tsne/tsne_geoclip.jpg', dpi=250)
+    plt.savefig('root_path/logs/evaluations/wacv/tsne/tsne_geoclip.jpg', dpi=250)
     plt.show()
 

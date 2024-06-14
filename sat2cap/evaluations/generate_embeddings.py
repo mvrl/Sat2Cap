@@ -18,10 +18,10 @@ from ..utils.preprocess import Preprocess
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
+    parser.add_argument('--ckpt_path', type=str, default='root_path/logs/temp_models/s212e5he/checkpoints/step=38000-val_loss=4.957.ckpt')
     parser.add_argument('--batch_size', type=int, default=500)
-    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/evaluations/wacv/geoembed_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957')
-    parser.add_argument('--test_dir', type=str, default='/home/a.dhakal/active/proj_smart/BING_IMG/netherland_bing/')
+    parser.add_argument('--output_dir', type=str, default='root_path/logs/evaluations/wacv/geoembed_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957')
+    parser.add_argument('--test_dir', type=str, default='root_path/BING_IMG/netherland_bing/')
 
     parser.add_argument('--embedding_size', type=int, default=540)
     parser.add_argument('--max_size', default=147420)
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     #find path to all input shards
     test_dir=args.test_dir
     test_paths = glob.glob(test_dir)
-    test_paths = ['/home/a.dhakal/active/datasets/YFCC100m/webdataset/3fc3d5d7-d373-455f-8430-334217190f1c.tar']
+    test_paths = ['data_dir/YFCC100m/webdataset/3fc3d5d7-d373-455f-8430-334217190f1c.tar']
     #remove paths which have already been traversed over
     print(f'Total Input Paths: {len(test_paths)}')
     [test_paths.remove(path) if path.split('/')[-1].split('.')[0] in existing_files else 1 for path in test_paths]

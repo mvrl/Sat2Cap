@@ -51,6 +51,6 @@ def get_avg_cosine(input_path):
 
 if __name__ == '__main__':
 
-    input_path = '/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/england/clip/step=86750-val_loss=4.h5'
+    input_path = 'root_path/logs/geoclip_embeddings/england/clip/step=86750-val_loss=4.h5'
     mean = get_avg_cosine(input_path)
     print(mean)
