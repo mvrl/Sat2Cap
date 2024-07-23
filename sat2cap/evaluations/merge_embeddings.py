@@ -17,17 +17,13 @@ from ..utils.preprocess import Preprocess
 from ..utils.random_seed import set_seed
 from ..utils import utils
 
-## This script should be used after generate_map_embeddings.py. This script allows you to add
-## the dynamic part to our embeddings. You can specify the date and time and you will get resulting
-## temporally dependent embeddings saved in the output directory
-
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument('--input_path', type=str, default='root_path/logs/geoclip_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957.h5')
+    parser.add_argument('--input_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/netherlands/no_dropout/step=38000-val_loss=4.957.h5')
     parser.add_argument('--batch_size', type=int, default=10000)
     #parser.add_argument('--input_prompt', type=str, default='playing in the sand with family')
     parser.add_argument('--ckpt_path', type=str, default='')
-    parser.add_argument('--date_time', type=str, default='2012-12-20 08:00:00.0')
+    parser.add_argument('--date_time', type=str, default='2012-05-20 08:00:00.0')
 
     args = parser.parse_args()
     return args
@@ -98,7 +94,14 @@ if __name__ == '__main__':
     dynamic_dataloader = DataLoader(dynamic_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=16)
 
     #get the geo encoder
-    pretrained_model = GeoMoCo.load_from_checkpoint(args.ckpt_path).eval()
+    ckpt=torch.load(args.ckpt_path)
+    hparams = ckpt['hyper_parameters']
+    hparams['spherical_harmonics'] = False
+    hparams['dropout_rate'] = 0
+    hparams['inference'] = True
+    # pretrained_model = GeoMoCo.load_from_checkpoint(args.ckpt_path).eval()
+    pretrained_model = GeoMoCo(hparams).eval()    
+    #pretrained_model = GeoMoCo.load_from_checkpoint(args.ckpt_path).eval()
     geo_encoder = pretrained_model.geo_encoder.to('cuda')
     for params in geo_encoder.parameters():
         params.requires_grad=False
