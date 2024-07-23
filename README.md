@@ -22,7 +22,7 @@ You can use the `run_geo.sh` script to train the Sat2Cap model. All the necessar
 
 ## 🔮 Inference
 Once you have the trained model use the `generate_map_embedding.py` file under evaluations to generate Sat2Cap embeddings for all images of interest. 
-Use `merge_embeddings.py` to add temporal input to the generated embeddings. 
+Use `merge_embeddings.py` to add location and temporal input to the generated embeddings. Finally, the `get_similarity.py` file generates similarity values for a given prompt. These similarity values can then be used to create zero-shot maps.
 
 ## 📑 Citation
 
