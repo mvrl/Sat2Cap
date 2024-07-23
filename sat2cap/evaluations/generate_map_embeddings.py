@@ -13,20 +13,19 @@ from PIL import ImageFile
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
+#code.interact(local=dict(globals(), **locals()))
 
 #local imports
 from ..models.geomoco import GeoMoCo 
 from ..utils.random_seed import set_seed
 from ..multidata import MultiData
+from ..multidata_usa import MultiDataUS
 from ..utils.preprocess import Preprocess
 from ..data.region_data import RegionDataset
 #huggingface imports
 from transformers import AutoTokenizer, CLIPTextModelWithProjection
 
-## This script generates the Sat2Cap embeddings for all images in a given directory and saves them 
-## as a h5py file. The --compute_clip flag can be used to compute the normal CLIP embeddings for 
-## the images
+
 
 
 def get_lat_lon(img_paths):
@@ -42,14 +41,17 @@ def get_lat_lon(img_paths):
     return np.array(lat_lon)
 
 
+
+
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument('--ckpt_path', type=str, default='path/to/model')
+    parser.add_argument('--ckpt_path', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/GeoClip/f1dtv48z/checkpoints/step=86750-val_loss=4.100.ckpt')
     parser.add_argument('--batch_size', type=int, default=540)
-    parser.add_argument('--output_dir', type=str, default='/path/to/output/dir')
-    parser.add_argument('--test_dir', type=str, default='/path/to/images')
+    parser.add_argument('--output_dir', type=str, default='/home/a.dhakal/active/user_a.dhakal/geoclip/logs/geoclip_embeddings/netherlands/clip')
+    parser.add_argument('--test_dir', type=str, default='/home/a.dhakal/active/proj_smart/BING_IMG/netherland_bing/')
     parser.add_argument('--embedding_size', type=int, default=512)
     parser.add_argument('--compute_clip', action='store_true')
+    #parser.add_argument('--max_size', default=147420)
 
     args = parser.parse_args()
     return args
@@ -66,7 +68,7 @@ if __name__ == '__main__':
     batch_size=args.batch_size
 
     #find path of embeddings that already exist
-    test_paths = glob.glob(f'{args.test_dir}/*/*.jpg')
+    test_paths = glob.glob(f'{args.test_dir}/*.jpg')
 
     #extract output path
     model_name = args.ckpt_path.split('/')[-1].split('.')[0]
@@ -76,7 +78,7 @@ if __name__ == '__main__':
     dataset = RegionDataset(test_paths)
 
     #create a dataloader
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=12)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=8)
 
     print(f'Total Input Images: {len(dataset)}')
     #max size is the number of test_path
@@ -98,14 +100,23 @@ if __name__ == '__main__':
 
     #load pretrained model
     if args.compute_clip:
-        #computes the regular CLIP embeddings
         checkpoint = torch.load(args.ckpt_path)
         hparams = checkpoint['hyper_parameters']
         hparams['geo_encode'] = False 
+        hparams['spherical_harmonics'] = False
+        hparams['dropout_rate'] = 0
+        hparams['inference'] = True
         pretrained_model = GeoMoCo(hparams).eval()
     else:
-        #computes the Sat2Cap embeddings
-        pretrained_model = GeoMoCo.load_from_checkpoint(args.ckpt_path).eval()
+        ckpt=torch.load(args.ckpt_path)
+        hparams = ckpt['hyper_parameters']
+        hparams['spherical_harmonics'] = False
+        hparams['dropout_rate'] = 0
+        hparams['inference'] = True
+        # pretrained_model = GeoMoCo.load_from_checkpoint(args.ckpt_path).eval()
+        pretrained_model = GeoMoCo(hparams).eval()
+        unused = pretrained_model.load_state_dict(ckpt['state_dict'])
+        print(f'Unused are {unused}')
     overhead_encoder = pretrained_model.imo_encoder.eval().to(device)
     for params in overhead_encoder.parameters():
         params.requires_grad=False
@@ -142,6 +153,11 @@ if __name__ == '__main__':
 
         print(f'File saved in {output_path}')
 
+    # f = h5py.File(output_path, 'r') 
+    # dset_tensor = f['tensor']
+    # dset_location = f['location']
+    # print(dset_tensor.shape, dset_location.shape)
+    # f.close()
 
 
 
