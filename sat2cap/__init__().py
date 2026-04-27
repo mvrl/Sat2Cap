@@ -1,1 +1,0 @@
-from utils.locationencoder.locationencoder import LocationEncoder

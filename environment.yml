@@ -1,0 +1,30 @@
+name: sat2cap
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pytorch>=2.0
+  - torchvision
+  - pytorch-cuda
+  - pip
+  - pip:
+    - pytorch-lightning>=2.0
+    - transformers>=4.30
+    - webdataset>=0.2
+    - wandb
+    - numpy
+    - matplotlib
+    - scipy
+    - scikit-learn
+    - tqdm
+    - Pillow
+    - imageio
+    - pandas
+    - h5py
+    - rasterio
+    - torchgeo
+    - torchmetrics
+    - git+https://github.com/openai/CLIP.git
+    - cartopy
