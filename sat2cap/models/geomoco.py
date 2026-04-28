@@ -102,23 +102,25 @@ class GeoMoCo(pl.LightningModule):
         
             self.ground_text_embeddings, self.overhead_text_embeddings = self.get_text_stuff() #Both are 21x512
        
-        #check if a valid data path is provided
-        if self.train_path:
-            self.trainset = MultiData(self.hparams).get_ds(mode='train')
-        else:
-            raise ValueError('Valid path to webdataset file is required')
-        
-        #test for validation file
-        if self.vali_path:
-            self.valiset = MultiData(self.hparams).get_ds(mode='test')
-        else:
-            self.valiset = None
+        #skip dataset loading in inference mode
+        if not getattr(self.hparams, 'inference', False):
+            #check if a valid data path is provided
+            if self.train_path:
+                self.trainset = MultiData(self.hparams).get_ds(mode='train')
+            else:
+                raise ValueError('Valid path to webdataset file is required')
+            
+            #test for validation file
+            if self.vali_path:
+                self.valiset = MultiData(self.hparams).get_ds(mode='test')
+            else:
+                self.valiset = None
 
-        #test for test file
-        if self.test_path:
-            self.testset = MultiData(self.hparams).get_ds(mode='test')
-        else:
-            self.testset = None
+            #test for test file
+            if self.test_path:
+                self.testset = MultiData(self.hparams).get_ds(mode='test')
+            else:
+                self.testset = None
         
         #confirm training state for two encoders
         print(f'Ground Level Image encoder training mode:{self.img_encoder.training}')
