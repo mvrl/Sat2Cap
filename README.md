@@ -96,8 +96,6 @@ Use `merge_embeddings.py` to add location and temporal input to the generated em
 
 ## 📑 Citation
 
-## 
-
 ```bibtex
 @inproceedings{dhakal2024sat2cap,
   title={Sat2cap: Mapping fine-grained textual descriptions from satellite images},
