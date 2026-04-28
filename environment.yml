@@ -26,5 +26,6 @@ dependencies:
     - rasterio
     - torchgeo
     - torchmetrics
+    - huggingface_hub
     - git+https://github.com/openai/CLIP.git
     - cartopy

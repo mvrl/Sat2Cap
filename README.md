@@ -17,6 +17,76 @@ The repository is the official implementation of [Sat2Cap](https://openaccess.th
 Sat2Cap model solves the mapping problem in a zero-shot approach. Instead of predicting pre-defined attributes for a satellite image, Sat2Cap attempts to learn the
 text associated with a given location. 
 
+## 🤗 Pretrained Models
+
+Pretrained Sat2Cap models are available on HuggingFace:
+
+**[MVRL Remote Sensing Foundation Models](https://huggingface.co/collections/MVRL/remote-sensing-foundation-models)**
+
+You can load the pretrained model with a single function call:
+
+```python
+from sat2cap.utils.load_model import load_sat2cap
+
+# Automatically downloads the checkpoint from HuggingFace Hub
+model = load_sat2cap(repo_id='MVRL/sat2cap', filename='sat2cap.ckpt')
+model.eval()
+```
+
+Or install `huggingface_hub` and download manually:
+
+```bash
+pip install huggingface_hub
+```
+
+```python
+from huggingface_hub import hf_hub_download
+ckpt_path = hf_hub_download(repo_id='MVRL/sat2cap', filename='sat2cap.ckpt')
+```
+
+## 🚀 Quick Start: Text-Image Similarity Demo
+
+See [`demo.ipynb`](demo.ipynb) for a full walkthrough that shows how to:
+
+1. Load the pretrained Sat2Cap model from HuggingFace
+2. Preprocess a satellite image
+3. Compute cosine similarity scores against a list of text prompts
+4. Visualize the top-matching text descriptions for your satellite image
+
+```python
+import torch
+from transformers import AutoTokenizer, CLIPTextModelWithProjection
+from sat2cap.utils.load_model import load_sat2cap
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Load pretrained model
+model = load_sat2cap(repo_id='MVRL/sat2cap', filename='sat2cap.ckpt').to(device).eval()
+
+# Load CLIP text encoder
+tokenizer = AutoTokenizer.from_pretrained('openai/clip-vit-base-patch32')
+text_model = CLIPTextModelWithProjection.from_pretrained('openai/clip-vit-base-patch32').to(device).eval()
+
+# Define text prompts
+prompts = ['a photo of a forest', 'a photo of a city center', 'a photo of farmland']
+
+# Encode text prompts
+with torch.no_grad():
+    tokens = tokenizer(prompts, padding=True, return_tensors='pt').to(device)
+    text_embeds = text_model(**tokens).text_embeds
+    text_embeds = text_embeds / text_embeds.norm(p=2, dim=-1, keepdim=True)
+
+# Encode a satellite image (supply your own image tensor preprocessed to 224x224)
+# img_tensor shape: (1, 3, 224, 224)
+with torch.no_grad():
+    img_embeds, _ = model.imo_encoder(img_tensor)
+
+# Compute cosine similarities
+similarities = (img_embeds @ text_embeds.T).squeeze(0)
+best_match = prompts[similarities.argmax()]
+print(f'Best matching description: "{best_match}"')
+```
+
 ## 🏋️‍♀️ Training
 You can use the `run_geo.sh` script to train the Sat2Cap model. All the necessary hyperparameters can be set in the bash script.
 
