@@ -9,7 +9,7 @@
 [Adeel Ahmad](https://adealgis.wixsite.com/adeel-ahmad-geog)
 [Subash Khanal](https://subash-khanal.github.io/),
 [Srikumar Sastry](https://sites.wustl.edu/srikumarsastry/),
-[Hannah Kerner](https://hannah-rae.github.io/)
+[Hannah Kerner](https://hannah-rae.github.io/),
 [Nathan Jacobs](https://jacobsn.github.io/)
 </div>
 
