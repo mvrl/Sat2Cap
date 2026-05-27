@@ -106,6 +106,10 @@ Use `merge_embeddings.py` to add location and temporal input to the generated em
 }
 ```
 
+## 📄 License
+
+This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.
+
 ## 🔍 Additional Links
 Check out our lab website for other interesting works on geospatial understanding and mapping:
 * Multi-Modal Vision Research Lab (MVRL) - [Link](https://mvrl.cse.wustl.edu/)
